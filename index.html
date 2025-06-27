@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        {%metas%}
+        <title>Streaming Process Discovery Challenge</title>
+        {%favicon%}
+        {%css%}
+        <style>
+            /* Nord Color Scheme Variables */
+            :root {
+                /* Polar Night (Dark Mode) */
+                --nord0: #2E3440;  /* Background */
+                --nord1: #3B4252;  /* Lighter background */
+                --nord2: #434C5E;  /* Selection background */
+                --nord3: #4C566A;  /* Comments, invisibles */
+
+                /* Snow Storm (Light Mode) */
+                --nord4: #D8DEE9;  /* Dark foreground/bright background */
+                --nord5: #E5E9F0;  /* Middle-bright background */
+                --nord6: #ECEFF4;  /* Bright background */
+
+                /* Frost */
+                --nord7: #8FBCBB;  /* Declarations */
+                --nord8: #88C0D0;  /* Primary accent */
+                --nord9: #81A1C1;  /* Secondary accent */
+                --nord10: #5E81AC; /* Tertiary accent */
+
+                /* Aurora */
+                --nord11: #BF616A; /* Red - errors */
+                --nord12: #D08770; /* Orange - warnings */
+                --nord13: #EBCB8B; /* Yellow - modifications */
+                --nord14: #A3BE8C; /* Green - additions */
+                --nord15: #B48EAD; /* Purple - special cases */
+            }
+
+            /* Overall layout */
+            body {
+                font-family: 'Inter', 'Segoe UI', sans-serif;
+                margin: 0;
+                padding: 0;
+                background-color: var(--nord6); /* Snow Storm - light mode background */
+                color: var(--nord0); /* Polar Night - dark text for contrast */
+            }
+
+            /* Header styling */
+            .header-container {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 15px 20px;
+                background-color: var(--nord0); /* Polar Night - dark header */
+                color: var(--nord6); /* Snow Storm - light text for contrast */
+                border-bottom: 2px solid var(--nord8); /* Frost accent */
+                margin-bottom: 15px;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+
+            .header-title {
+                margin: 0;
+                font-size: 24px;
+                font-weight: 600;
+                color: var(--nord6); /* Snow Storm - light text for contrast */
+            }
+
+            .leaderboard-box {
+                border: 1px dashed var(--nord9); /* Frost accent */
+                padding: 8px 15px;
+                border-radius: 5px;
+                background-color: var(--nord1); /* Slightly lighter Polar Night */
+            }
+
+            .leaderboard-text {
+                font-weight: bold;
+                color: var(--nord6); /* Snow Storm - light text for contrast */
+            }
+
+            /* Main content area */
+            .main-content {
+                display: flex;
+                padding: 0 10px;
+            }
+
+            .column {
+                padding: 0 10px;
+                flex: 1;
+            }
+
+            /* Panels */
+            .panel {
+                background-color: var(--nord5); /* Snow Storm - panel background */
+                border-radius: 8px;
+                padding: 15px;
+                margin-bottom: 20px;
+                box-shadow: 0 2px 8px rgba(46, 52, 64, 0.1);
+                border: 1px solid var(--nord4);
+            }
+
+            .section-title {
+                margin-top: 0;
+                margin-bottom: 15px;
+                font-size: 18px;
+                color: var(--nord0); /* Polar Night - dark text */
+                border-bottom: 2px solid var(--nord7); /* Frost accent */
+                padding-bottom: 8px;
+            }
+
+            /* Stream definition boxes */
+            .stream-definition-box, .stream-customize-box {
+                background-color: var(--nord6); /* Snow Storm - brightest for inner boxes */
+                border: 1px solid var(--nord4);
+                border-radius: 6px;
+                padding: 15px;
+                margin-bottom: 15px;
+            }
+
+            .subsection-title {
+                margin-top: 0;
+                font-size: 16px;
+                color: var(--nord10); /* Frost accent */
+                font-weight: 600;
+            }
+
+            /* Form elements */
+            .stream-options {
+                margin: 15px 0;
+            }
+
+            .stream-options label {
+                display: block;
+                margin-bottom: 10px;
+                color: var(--nord2); /* Polar Night - for text */
+                transition: color 0.2s;
+            }
+
+            .stream-options label:hover {
+                color: var(--nord10); /* Frost accent on hover */
+            }
+
+            .slider {
+                margin-bottom: 20px;
+            }
+
+            .generic-card-design {
+                background-color: var(--nord9);
+                width: 100px;
+                height: 100px;
+                border: 1px solid var(--nord9);
+                border-radius: 15%;
+                margin-right: 10px;
+                display:flex;
+                justify-content: center;
+                align-items: center;
+                padding: 10px;
+            }
+
+            /* add shadows on hover */
+            .generic-card-design:hover {
+                box-shadow: 0 4px 16px 0 rgba(0,0,0,0.2);
+                cursor: pointer;
+            }
+
+            .stream-scenario-options {
+                display: flex;
+                justify-content: space-between;
+            }
+
+            .rc-slider-track {
+                background-color: var(--nord8); /* Frost accent for active part */
+            }
+
+            .rc-slider-handle {
+                border-color: var(--nord7); /* Frost accent */
+            }
+
+            .dropdown .Select-control {
+                border-color: var(--nord9); /* Frost accent */
+            }
+
+            .dropdown .Select-menu-outer {
+                background-color: var(--nord6); /* Snow Storm */
+                border-color: var(--nord9); /* Frost accent */
+            }
+
+            .customize-controls label {
+                display: block;
+                margin-top: 10px;
+                font-weight: 600;
+                color: var(--nord2); /* Polar Night - for text */
+            }
+
+            /* Buttons */
+            .run-button, .settings-button {
+                background-color: var(--nord10); /* Frost accent */
+                color: var(--nord6); /* Snow Storm - light text */
+                padding: 10px 15px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background-color 0.2s;
+                margin-top: 10px;
+                margin-right: 10px;
+            }
+
+            .run-button:hover, .settings-button:hover {
+                background-color: var(--nord9); /* Lighter Frost on hover */
+            }
+
+            /* Aurora accents for specific actions */
+            .run-button {
+                background-color: var(--nord14); /* Aurora green for action */
+            }
+
+            .run-button:hover {
+                background-color: var(--nord8); /* Frost on hover */
+            }
+
+            /* Results area */
+            .results-container {
+                min-height: 100px;
+                color: var(--nord0); /* Polar Night - dark text */
+            }
+
+            .process-model-container {
+                margin-top: 20px;
+            }
+
+            .metrics-container {
+                margin-top: 10px;
+            }
+
+            .metric-item {
+                margin-bottom: 10px;
+                display: flex;
+                align-items: center;
+                padding: 8px;
+                border-radius: 4px;
+                background-color: var(--nord6); /* Snow Storm - bright background */
+            }
+
+            .metric-label {
+                font-weight: 600;
+                color: var(--nord2); /* Polar Night - for text */
+                flex: 1;
+            }
+
+            .metric-value {
+                font-weight: 600;
+                color: var(--nord10); /* Frost accent */
+                margin-left: 5px;
+            }
+
+            /* File upload styling */
+            .upload-area {
+                border: 2px dashed var(--nord9); /* Frost accent */
+                background-color: var(--nord6); /* Snow Storm - bright background */
+                transition: all 0.2s;
+            }
+
+            .upload-area:hover {
+                border-color: var(--nord7); /* Lighter Frost on hover */
+                background-color: var(--nord5); /* Snow Storm - slightly darker */
+            }
+
+            /* Event stream styling */
+            #event-stream-preview {
+                max-height: 300px;
+                overflow-y: auto;
+                background-color: var(--nord5);
+                border-radius: 4px;
+                padding: 8px;
+            }
+
+            .event-item {
+                padding: 8px;
+                margin-bottom: 5px;
+                background-color: var(--nord6);
+                border-left: 3px solid var(--nord8);
+                font-family: monospace;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+
+            .event-item:nth-child(odd) {
+                background-color: var(--nord5);
+            }
+
+            /* Responsive adjustments */
+            @media (max-width: 992px) {
+                .main-content {
+                    flex-direction: column;
+                }
+
+                .column {
+                    width: 100%;
+                    padding: 0;
+                }
+            }
+
+            /* Dark mode toggle switch (placeholder for future implementation) */
+            .theme-switch {
+                display: inline-block;
+                height: 24px;
+                position: relative;
+                width: 48px;
+            }
+        </style>
+    </head>
+    <body>
+        {%app_entry%}
+        <footer>
+            {%config%}
+            {%scripts%}
+            {%renderer%}
+        </footer>
+    </body>
+</html>

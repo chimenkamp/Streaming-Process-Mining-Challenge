@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+  <pnml xmlns="http://www.pnml.org/version-2009/grammar/pnml">
+    <net id="0fe23a95-a774-4edb-9575-4e648f1595a9" type="http://www.pnml.org/version-2009/grammar/ptnet">
+      <name>
+        <text>New Petri Net</text>
+      </name>
+      <description>
+        <text></text>
+      </description>
+      <place id="d3d90db3-e6dc-4e3d-9231-f881dfe387b0">
+        <name>
+          <text>P1</text>
+        </name>
+        <initialMarking>
+          <text>1</text>
+        </initialMarking>
+        <graphics>
+          <position x="190" y="200"/>
+        </graphics>
+      </place>
+      <place id="bbf47ccd-bc81-4e91-9c04-7ca52eb82c7b">
+        <name>
+          <text>P2</text>
+        </name>
+        <initialMarking>
+          <text>0</text>
+        </initialMarking>
+        <graphics>
+          <position x="380" y="210"/>
+        </graphics>
+      </place>
+      <place id="11e40f53-e481-4974-9baa-07d3da4ae3b1">
+        <name>
+          <text>P3</text>
+        </name>
+        <initialMarking>
+          <text>0</text>
+        </initialMarking>
+        <graphics>
+          <position x="600" y="210"/>
+        </graphics>
+      </place>
+      <place id="cbbb31ae-3d9d-41e0-bca8-374beba17e99">
+        <name>
+          <text>P4</text>
+        </name>
+        <initialMarking>
+          <text>0</text>
+        </initialMarking>
+        <finalMarking>
+          <text>1</text>
+        </finalMarking>
+        <graphics>
+          <position x="810" y="210"/>
+        </graphics>
+      </place>
+      <transition id="757e8323-e448-4728-bdc1-b9e0f0d79e3f">
+        <name>
+          <text>T1</text>
+        </name>
+        <graphics>
+          <position x="270" y="210"/>
+        </graphics>
+      </transition>
+      <transition id="dba20d7a-497d-4149-8b53-5ac773b7c733">
+        <name>
+          <text>T2</text>
+        </name>
+        <graphics>
+          <position x="480" y="220"/>
+        </graphics>
+      </transition>
+      <transition id="ff9e3796-4eb1-4dd1-bc1d-381acef456bf">
+        <name>
+          <text>T3</text>
+        </name>
+        <graphics>
+          <position x="730" y="210"/>
+        </graphics>
+      </transition>
+      <transition id="97046658-f1e6-44bc-92e4-bbc20b9eece1">
+        <name>
+          <text>T4</text>
+        </name>
+        <graphics>
+          <position x="490" y="110"/>
+        </graphics>
+      </transition>
+      <transition id="5740139d-2dc3-4d30-b99e-4aaa81de78af">
+        <name>
+          <text>T5</text>
+        </name>
+        <graphics>
+          <position x="490" y="360"/>
+        </graphics>
+      </transition>
+      <arc id="821d8eb7-16c2-4058-919f-a5f622564bb8" source="d3d90db3-e6dc-4e3d-9231-f881dfe387b0" target="757e8323-e448-4728-bdc1-b9e0f0d79e3f">
+        <inscription>
+          <text>1</text>
+        </inscription>
+      </arc>
+      <arc id="4e09b186-e628-423a-8e0b-b416a9bb6179" source="757e8323-e448-4728-bdc1-b9e0f0d79e3f" target="bbf47ccd-bc81-4e91-9c04-7ca52eb82c7b">
+        <inscription>
+          <text>1</text>
+        </inscription>
+      </arc>
+      <arc id="ac86a6f1-737d-417f-a746-964b41329853" source="bbf47ccd-bc81-4e91-9c04-7ca52eb82c7b" target="97046658-f1e6-44bc-92e4-bbc20b9eece1">
+        <inscription>
+          <text>1</text>
+        </inscription>
+      </arc>
+      <arc id="128d7c71-b95d-4212-9558-b17d3e5aa6f1" source="bbf47ccd-bc81-4e91-9c04-7ca52eb82c7b" target="dba20d7a-497d-4149-8b53-5ac773b7c733">
+        <inscription>
+          <text>1</text>
+        </inscription>
+      </arc>
+      <arc id="c433c728-eda3-4bdf-9e10-f725e69fc3a6" source="bbf47ccd-bc81-4e91-9c04-7ca52eb82c7b" target="5740139d-2dc3-4d30-b99e-4aaa81de78af">
+        <inscription>
+          <text>1</text>
+        </inscription>
+      </arc>
+      <arc id="478b6bf2-0bc6-446a-9d3f-b029cecc9e26" source="97046658-f1e6-44bc-92e4-bbc20b9eece1" target="11e40f53-e481-4974-9baa-07d3da4ae3b1">
+        <inscription>
+          <text>1</text>
+        </inscription>
+      </arc>
+      <arc id="8021a7b9-d9ea-4750-9c4a-b8a29fbfa938" source="dba20d7a-497d-4149-8b53-5ac773b7c733" target="11e40f53-e481-4974-9baa-07d3da4ae3b1">
+        <inscription>
+          <text>1</text>
+        </inscription>
+      </arc>
+      <arc id="446a1f89-5568-4695-882b-31890d4b0595" source="5740139d-2dc3-4d30-b99e-4aaa81de78af" target="11e40f53-e481-4974-9baa-07d3da4ae3b1">
+        <inscription>
+          <text>1</text>
+        </inscription>
+      </arc>
+      <arc id="0d85ccb8-3784-44a7-8a23-c9498675d993" source="11e40f53-e481-4974-9baa-07d3da4ae3b1" target="ff9e3796-4eb1-4dd1-bc1d-381acef456bf">
+        <inscription>
+          <text>1</text>
+        </inscription>
+      </arc>
+      <arc id="67be78b5-3980-4b69-b250-e6f9d72fe294" source="ff9e3796-4eb1-4dd1-bc1d-381acef456bf" target="cbbb31ae-3d9d-41e0-bca8-374beba17e99">
+        <inscription>
+          <text>1</text>
+        </inscription>
+      </arc>
+      <dataVariables>
+      </dataVariables>
+    </net>
+  </pnml>

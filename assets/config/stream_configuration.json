@@ -1,0 +1,55 @@
+{
+  "streams": [
+    {
+      "id": "simple_concept_drift",
+      "name": "Simple Concept Drift",
+      "description": "A basic stream containing a simple concept drift. The first 60% of the stream follows one model, and the last 40% follows another.",
+      "type": "pnml_drift",
+      "is_testing": true,
+      "pnml_log_a": "model_one.pnml",
+      "pnml_log_b": "model_two.pnml",
+      "drift_config": {
+        "drift_type": "sudden",
+        "drift_begin_percentage": 0.6,
+        "drift_end_percentage": 0.6,
+        "event_level_drift": true,
+        "num_cases_a": 300,
+        "num_cases_b": 200
+      }
+    },
+    {
+      "id": "gradual_concept_drift",
+      "name": "Gradual Concept Drift",
+      "description": "A stream with gradual concept drift occurring between 50% and 60% of the timeline.",
+      "type": "pnml_drift",
+      "is_testing": true,
+      "pnml_log_a": "model_one.pnml",
+      "pnml_log_b": "model_two.pnml",
+      "drift_config": {
+        "drift_type": "gradual",
+        "drift_begin_percentage": 0.5,
+        "drift_end_percentage": 0.6,
+        "event_level_drift": true,
+        "num_cases_a": 500,
+        "num_cases_b": 500
+      }
+    },
+    {
+      "id": "early_sudden_drift",
+      "name": "Early Sudden Drift",
+      "description": "A stream with sudden concept drift occurring early at 25% of the timeline.",
+      "type": "pnml_drift",
+      "is_testing": true,
+      "pnml_log_a": "model_one.pnml",
+      "pnml_log_b": "model_two.pnml",
+      "drift_config": {
+        "drift_type": "sudden",
+        "drift_begin_percentage": 0.25,
+        "drift_end_percentage": 0.25,
+        "event_level_drift": true,
+        "num_cases_a": 125,
+        "num_cases_b": 375
+      }
+    }
+  ]
+}

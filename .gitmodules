@@ -1,0 +1,3 @@
+[submodule "DistributedEventFactory"]
+	path = DistributedEventFactory
+	url = https://github.com/cau-se/DistributedEventFactory.git

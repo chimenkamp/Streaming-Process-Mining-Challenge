@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+  <pnml xmlns="http://www.pnml.org/version-2009/grammar/pnml">
+    <net id="0fe23a95-a774-4edb-9575-4e648f1595a9" type="http://www.pnml.org/version-2009/grammar/ptnet">
+      <name>
+        <text>New Petri Net</text>
+      </name>
+      <description>
+        <text></text>
+      </description>
+      <place id="d3d90db3-e6dc-4e3d-9231-f881dfe387b0">
+        <name>
+          <text>P1</text>
+        </name>
+        <initialMarking>
+          <text>1</text>
+        </initialMarking>
+        <graphics>
+          <position x="190" y="200"/>
+        </graphics>
+      </place>
+      <place id="bbf47ccd-bc81-4e91-9c04-7ca52eb82c7b">
+        <name>
+          <text>P2</text>
+        </name>
+        <initialMarking>
+          <text>0</text>
+        </initialMarking>
+        <graphics>
+          <position x="380" y="200"/>
+        </graphics>
+      </place>
+      <place id="064d9237-744a-4458-a360-99e4c569cae2">
+        <name>
+          <text>P3</text>
+        </name>
+        <initialMarking>
+          <text>0</text>
+        </initialMarking>
+        <graphics>
+          <position x="540" y="110"/>
+        </graphics>
+      </place>
+      <place id="3bf3991f-5a66-4ee8-bdd2-fbd1db429c74">
+        <name>
+          <text>P4</text>
+        </name>
+        <initialMarking>
+          <text>0</text>
+        </initialMarking>
+        <finalMarking>
+          <text>1</text>
+        </finalMarking>
+        <graphics>
+          <position x="540" y="200"/>
+        </graphics>
+      </place>
+      <place id="8813fbd6-a789-4a78-b9af-e9d0daf7b062">
+        <name>
+          <text>P5</text>
+        </name>
+        <initialMarking>
+          <text>0</text>
+        </initialMarking>
+        <graphics>
+          <position x="540" y="290"/>
+        </graphics>
+      </place>
+      <place id="cb8fa657-55fe-4a18-bf78-6cd01bcb7aae">
+        <name>
+          <text>P6</text>
+        </name>
+        <initialMarking>
+          <text>0</text>
+        </initialMarking>
+        <graphics>
+          <position x="920" y="200"/>
+        </graphics>
+      </place>
+      <place id="2f69487f-cae9-4993-b183-dafac7a450e8">
+        <name>
+          <text>P7</text>
+        </name>
+        <initialMarking>
+          <text>0</text>
+        </initialMarking>
+        <graphics>
+          <position x="730" y="110"/>
+        </graphics>
+      </place>
+      <place id="9cfa5433-579c-404f-a16f-2de4460c4b0e">
+        <name>
+          <text>P8</text>
+        </name>
+        <initialMarking>
+          <text>0</text>
+        </initialMarking>
+        <graphics>
+          <position x="730" y="200"/>
+        </graphics>
+      </place>
+      <place id="a03baeb9-4e6b-45a9-9f67-5e025f047ab1">
+        <name>
+          <text>P9</text>
+        </name>
+        <initialMarking>
+          <text>0</text>
+        </initialMarking>
+        <graphics>
+          <position x="730" y="290"/>
+        </graphics>
+      </place>
+      <transition id="757e8323-e448-4728-bdc1-b9e0f0d79e3f">
+        <name>
+          <text>T1_2</text>
+        </name>
+        <graphics>
+          <position x="270" y="200"/>
+        </graphics>
+      </transition>
+      <transition id="4f182bce-42de-46c1-8bdf-947922fc52dd">
+        <name>
+          <text>T2_2</text>
+        </name>
+        <graphics>
+          <position x="450" y="200"/>
+        </graphics>
+      </transition>
+      <transition id="dee4002a-1ff8-46b6-bbac-3e55f49de088">
+        <name>
+          <text>T3_2</text>
+        </name>
+        <graphics>
+          <position x="620" y="110"/>
+        </graphics>
+      </transition>
+      <transition id="0991ab2a-e68e-410d-96dd-badb45833777">
+        <name>
+          <text>T4_2</text>
+        </name>
+        <graphics>
+          <position x="620" y="200"/>
+        </graphics>
+      </transition>
+      <transition id="c1ad3a10-6e45-4508-b71c-de6e5e20205b">
+        <name>
+          <text>T5_2</text>
+        </name>
+        <graphics>
+          <position x="620" y="290"/>
+        </graphics>
+      </transition>
+      <transition id="3fd7a968-ff7b-4274-bdce-3be142e843d4">
+        <name>
+          <text>T6_2</text>
+        </name>
+        <graphics>
+          <position x="840" y="200"/>
+        </graphics>
+      </transition>
+      <arc id="821d8eb7-16c2-4058-919f-a5f622564bb8" source="d3d90db3-e6dc-4e3d-9231-f881dfe387b0" target="757e8323-e448-4728-bdc1-b9e0f0d79e3f">
+        <inscription>
+          <text>1</text>
+        </inscription>
+      </arc>
+      <arc id="4e09b186-e628-423a-8e0b-b416a9bb6179" source="757e8323-e448-4728-bdc1-b9e0f0d79e3f" target="bbf47ccd-bc81-4e91-9c04-7ca52eb82c7b">
+        <inscription>
+          <text>1</text>
+        </inscription>
+      </arc>
+      <arc id="cdc78236-73f9-4a58-b5db-d7a770c0118b" source="bbf47ccd-bc81-4e91-9c04-7ca52eb82c7b" target="4f182bce-42de-46c1-8bdf-947922fc52dd">
+        <inscription>
+          <text>1</text>
+        </inscription>
+      </arc>
+      <arc id="46eb57ab-ba9b-4104-8f19-b91f59f6d058" source="4f182bce-42de-46c1-8bdf-947922fc52dd" target="064d9237-744a-4458-a360-99e4c569cae2">
+        <inscription>
+          <text>1</text>
+        </inscription>
+      </arc>
+      <arc id="d6f13aa0-631e-4075-b064-d435f0d3fb5a" source="4f182bce-42de-46c1-8bdf-947922fc52dd" target="3bf3991f-5a66-4ee8-bdd2-fbd1db429c74">
+        <inscription>
+          <text>1</text>
+        </inscription>
+      </arc>
+      <arc id="8e498284-1c5c-4dd4-9ea6-bd97d494c741" source="4f182bce-42de-46c1-8bdf-947922fc52dd" target="8813fbd6-a789-4a78-b9af-e9d0daf7b062">
+        <inscription>
+          <text>1</text>
+        </inscription>
+      </arc>
+      <arc id="e78f9fec-531e-4038-bb82-31b320fad922" source="064d9237-744a-4458-a360-99e4c569cae2" target="dee4002a-1ff8-46b6-bbac-3e55f49de088">
+        <inscription>
+          <text>1</text>
+        </inscription>
+      </arc>
+      <arc id="378e1a8a-69ee-4781-b4d9-2bb6d579b753" source="3bf3991f-5a66-4ee8-bdd2-fbd1db429c74" target="0991ab2a-e68e-410d-96dd-badb45833777">
+        <inscription>
+          <text>1</text>
+        </inscription>
+      </arc>
+      <arc id="c71e302a-7e3a-40b3-9f02-b0e44a4406dc" source="8813fbd6-a789-4a78-b9af-e9d0daf7b062" target="c1ad3a10-6e45-4508-b71c-de6e5e20205b">
+        <inscription>
+          <text>1</text>
+        </inscription>
+      </arc>
+      <arc id="229603bd-466b-4354-9ee2-497a2fc85e76" source="dee4002a-1ff8-46b6-bbac-3e55f49de088" target="2f69487f-cae9-4993-b183-dafac7a450e8">
+        <inscription>
+          <text>1</text>
+        </inscription>
+      </arc>
+      <arc id="0714c77d-99ec-49f4-aa8a-169bce0bb5db" source="0991ab2a-e68e-410d-96dd-badb45833777" target="9cfa5433-579c-404f-a16f-2de4460c4b0e">
+        <inscription>
+          <text>1</text>
+        </inscription>
+      </arc>
+      <arc id="bcc02bf9-0d6f-4c10-b70d-13b95c0d7a06" source="c1ad3a10-6e45-4508-b71c-de6e5e20205b" target="a03baeb9-4e6b-45a9-9f67-5e025f047ab1">
+        <inscription>
+          <text>1</text>
+        </inscription>
+      </arc>
+      <arc id="15a9c1b5-4f67-45e1-b317-2d4a9881a006" source="2f69487f-cae9-4993-b183-dafac7a450e8" target="3fd7a968-ff7b-4274-bdce-3be142e843d4">
+        <inscription>
+          <text>1</text>
+        </inscription>
+      </arc>
+      <arc id="8b82ecf4-f8c5-4c9b-853d-abf74cf69d1b" source="9cfa5433-579c-404f-a16f-2de4460c4b0e" target="3fd7a968-ff7b-4274-bdce-3be142e843d4">
+        <inscription>
+          <text>1</text>
+        </inscription>
+      </arc>
+      <arc id="9e06a038-ad5c-487c-abba-de1c98e28906" source="a03baeb9-4e6b-45a9-9f67-5e025f047ab1" target="3fd7a968-ff7b-4274-bdce-3be142e843d4">
+        <inscription>
+          <text>1</text>
+        </inscription>
+      </arc>
+      <arc id="b448c372-2f55-43a0-96ad-8a518a95bcf6" source="3fd7a968-ff7b-4274-bdce-3be142e843d4" target="cb8fa657-55fe-4a18-bf78-6cd01bcb7aae">
+        <inscription>
+          <text>1</text>
+        </inscription>
+      </arc>
+      <dataVariables>
+      </dataVariables>
+    </net>
+  </pnml>
