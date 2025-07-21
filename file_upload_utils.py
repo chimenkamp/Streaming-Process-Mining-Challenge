@@ -15,6 +15,7 @@ import ast
 import inspect
 import importlib.util
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Type, Tuple
 import json
@@ -269,10 +270,11 @@ class AlgorithmLoader:
     def _prepare_module_namespace(self, module):
         """Prepare module namespace with necessary imports."""
         # Import commonly needed modules and classes
+        import typing
         module.BaseAlgorithm = self.base_class
-        module.Dict = Dict
-        module.Any = Any
-        module.List = List
+        module.Dict = typing.Dict
+        module.Any = typing.Any
+        module.List = typing.List
         
         # Import commonly used libraries
         try:

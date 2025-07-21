@@ -1,10 +1,3 @@
-"""
-Leaderboard UI Components
-
-This module contains Dash components for displaying the leaderboard,
-submission history, and challenge statistics.
-"""
-
 import dash
 from dash import dcc, html, Input, Output, State, callback_context
 import dash_bootstrap_components as dbc

@@ -8,10 +8,10 @@ from src.ui.algorithm_base import EventStream
 
 from tests.behavioral_conformance import BehavioralConformanceAlgorithm
 
-EVENT_LOG_PATH: str = "assets/data/streaming_conformance.xes"
+EVENT_LOG_PATH: str = "../assets/data/streaming_conformance.xes"
 
-FIRST_MODEL_PATH: str = "assets/data/model_one.pnml"
-SECOND_MODEL_PATH: str = "assets/data/model_two.pnml"
+FIRST_MODEL_PATH: str = "../assets/data/model_one.pnml"
+SECOND_MODEL_PATH: str = "../assets/data/model_two.pnml"
 
 # cdlg: ConceptDriftLogGenerator = ConceptDriftLogGenerator(
 #     pm4py.convert_to_dataframe(

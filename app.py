@@ -1,3 +1,5 @@
+# Fixed version of app.py with proper component management
+
 import inspect
 import os
 import zipfile
@@ -61,31 +63,11 @@ except ImportError as e:
     def create_leaderboard_layout(*args):
         return html.Div("Leaderboard not available")
 
-
-    def create_leaderboard_table(*args):
-        return html.Div("Leaderboard not available")
-
-
-    def create_performance_chart(*args):
-        return go.Figure()
-
-
-    def create_recent_activity_list(*args):
-        return html.Div("Activity list not available")
-
-
-    def create_submission_details_modal_content(*args):
-        return html.Div("Details not available")
-
-
-    def get_time_ago(*args):
-        return "Unknown"
-
 # Initialize Dash app with assets folder
 app = dash.Dash(__name__,
                 external_stylesheets=[dbc.themes.BOOTSTRAP],
                 assets_folder='assets',
-                suppress_callback_exceptions=True)
+                suppress_callback_exceptions=True)  # This is crucial!
 app.title = "Streaming Process Mining Challenge"
 
 # Add custom CSS to the app
@@ -99,29 +81,6 @@ app.index_string = '''
         {%css%}
         <style>
 ''' + get_custom_css() + '''
-        .leaderboard-table th {
-            background-color: ''' + NORD_COLORS['polar_night'][2] + ''';
-            padding: 12px 8px;
-            border-bottom: 2px solid ''' + NORD_COLORS['polar_night'][3] + ''';
-            font-weight: bold;
-        }
-        .leaderboard-table td {
-            padding: 10px 8px;
-            border-bottom: 1px solid ''' + NORD_COLORS['polar_night'][3] + ''';
-        }
-        .leaderboard-table tr:hover {
-            background-color: ''' + NORD_COLORS['polar_night'][2] + ''' !important;
-        }
-        .nav-tabs .nav-link {
-            background-color: ''' + NORD_COLORS['polar_night'][2] + ''';
-            border-color: ''' + NORD_COLORS['polar_night'][3] + ''';
-            color: ''' + NORD_COLORS['snow_storm'][1] + ''';
-        }
-        .nav-tabs .nav-link.active {
-            background-color: ''' + NORD_COLORS['frost'][2] + ''';
-            border-color: ''' + NORD_COLORS['frost'][2] + ''';
-            color: ''' + NORD_COLORS['snow_storm'][2] + ''';
-        }
         </style>
     </head>
     <body>
@@ -152,6 +111,7 @@ UPLOAD_DIRECTORY = os.path.join(os.getcwd(), "uploaded_algorithms")
 os.makedirs(UPLOAD_DIRECTORY, exist_ok=True)
 
 
+# File handling functions (same as before)
 def save_uploaded_file(contents, filename, session_id):
     """Save uploaded file and return the file path."""
     if contents is None:
@@ -241,6 +201,23 @@ def load_algorithm_from_file(file_path):
         return algorithm_class, None
     except Exception as e:
         return None, str(e)
+
+
+def find_concrete_algorithm_class(exec_globals: Dict[str, Any], base_class: Type[BaseAlgorithm]) -> Optional[
+    Type[BaseAlgorithm]]:
+    """Scan exec_globals to find a concrete subclass of base_class."""
+    for obj in exec_globals.values():
+        if not inspect.isclass(obj):
+            continue
+        if obj is base_class:
+            continue
+        if not issubclass(obj, base_class):
+            continue
+        abstracts = getattr(obj, "__abstractmethods__", set())
+        if abstracts:
+            continue
+        return obj
+    return None
 
 
 # Create main navigation
@@ -568,7 +545,7 @@ See the example algorithm file for a complete implementation.
     ])
 
 
-# Main Layout
+# FIXED: Main Layout with persistent components
 app.layout = dbc.Container([
     # Header
     dbc.Row([
@@ -585,6 +562,7 @@ app.layout = dbc.Container([
     # Tab Content
     html.Div(id="tab-content"),
 
+    # FIXED: Always-present modals and stores (not dependent on tab)
     # File Upload Modal
     dbc.Modal([
         dbc.ModalHeader([
@@ -698,7 +676,7 @@ app.layout = dbc.Container([
         ], style={'background-color': NORD_COLORS['polar_night'][1]})
     ], id="submission-modal", is_open=False),
 
-    # Fullscreen Plot Modal (existing)
+    # Fullscreen Plot Modal
     dbc.Modal([
         dbc.ModalHeader([
             dbc.ModalTitle("Conformance Analysis - Fullscreen View",
@@ -730,73 +708,13 @@ app.layout = dbc.Container([
         style={'max-width': '90vw', 'max-height': '90vh'},
         is_open=False),
 
-    # Hidden div to store session data
+    # FIXED: Persistent data stores
     html.Div(id='session-id', style={'display': 'none'}, children=str(uuid.uuid4())),
     html.Div(id='test-results-store', style={'display': 'none'}),
     html.Div(id='stream-data-store', style={'display': 'none'}),
     html.Div(id='current-position-store', style={'display': 'none'}, children='0'),
     html.Div(id='uploaded-algorithm-store', style={'display': 'none'}),
     html.Div(id='submission-status-store', style={'display': 'none'}),
-
-    # Hidden placeholders for callback components (prevents callback errors)
-    html.Div([
-        html.Div(id='upload-status', style={'display': 'none'}),
-        html.Div(id='algorithm-info', style={'display': 'none'}),
-        html.Div(id='algorithm-details', style={'display': 'none'}),
-        html.Div(id='stream-description', style={'display': 'none'}),
-        html.Div(id='results-placeholder', style={'display': 'none'}),
-        html.Div(id='metrics-display', style={'display': 'none'}),
-        html.Div(id='timeline-info', style={'display': 'none'}),
-        html.Div(id='warmup-marker', style={'display': 'none'}),
-        html.Div(id='drift-marker', style={'display': 'none'}),
-        html.Div(id='timeline-container', style={'display': 'none'}),
-        html.Div(id='results-container', style={'display': 'none'}),
-        html.Div(id='scrubber-progress', style={'display': 'none'}),
-        html.Div(id='phase-indicator', style={'display': 'none'}),
-        html.Div(id='stream-scrubber', style={'display': 'none'}),
-        html.Div(id='scrubber-handle', style={'display': 'none'}),
-
-        # Leaderboard components
-        html.Div(id='total-submissions-stat', style={'display': 'none'}),
-        html.Div(id='unique-teams-stat', style={'display': 'none'}),
-        html.Div(id='completed-submissions-stat', style={'display': 'none'}),
-        html.Div(id='completion-rate-stat', style={'display': 'none'}),
-        html.Div(id='recent-submissions-stat', style={'display': 'none'}),
-        html.Div(id='leaderboard-table', style={'display': 'none'}),
-        html.Div(id='recent-activity-list', style={'display': 'none'}),
-        html.Div(id='my-submissions-content', style={'display': 'none'}),
-        html.Div(id='submission-details-content', style={'display': 'none'}),
-
-        # Form components
-        dcc.Dropdown(id='stream-selector', style={'display': 'none'}),
-        dcc.Slider(id='num-cases-slider'),
-        dbc.Button("Test", id='test-uploaded-btn', style={'display': 'none'}),
-        dbc.Button("Submit", id='submit-to-challenge-btn', style={'display': 'none'}),
-        dbc.Button("Run", id='run-test-btn', style={'display': 'none'}),
-        dbc.Button("Reupload", id='reupload-btn', style={'display': 'none'}),
-        dbc.Button("Refresh", id='refresh-leaderboard-btn', style={'display': 'none'}),
-        dbc.Button("Search", id='search-submissions-btn', style={'display': 'none'}),
-        dbc.Button("Fullscreen", id='fullscreen-btn', style={'display': 'none'}),
-
-        # Graph and chart components
-        dcc.Graph(id='results-plot', style={'display': 'none'}),
-        dcc.Graph(id='performance-distribution-chart', style={'display': 'none'}),
-        dcc.Graph(id='fullscreen-plot', style={'display': 'none'}),
-
-        # Input components
-        dbc.Input(id='team-name-filter', style={'display': 'none'}),
-        html.Div(id='fullscreen-metrics', style={'display': 'none'}),
-        html.Div(id='app-error-display', style={'display': 'none'}),
-        html.Div(id='app-error-trigger', style={'display': 'none'}),
-
-        # Modal components
-        html.Div(id='submission-details-modal', style={'display': 'none'}),
-        html.Div(id='submission-modal-title', style={'display': 'none'}),
-        dbc.Button("Close", id='close-submission-modal', style={'display': 'none'}),
-
-        # Auto-refresh interval
-        dcc.Interval(id='leaderboard-refresh-interval', interval=30 * 1000, n_intervals=0),
-    ], style={'display': 'none'})  # Hide all placeholder components,
 
 ], fluid=True, style={
     'background-color': NORD_COLORS['polar_night'][0],
@@ -805,7 +723,7 @@ app.layout = dbc.Container([
 })
 
 
-# Callback to handle tab switching
+# FIXED: Callback to handle tab switching
 @app.callback(
     Output("tab-content", "children"),
     [Input("main-tabs", "active_tab")]
@@ -823,7 +741,7 @@ def render_tab_content(active_tab):
         return html.Div("Select a tab")
 
 
-# Callback to open upload modal
+# FIXED: Callback to open upload modal - with proper error handling
 @app.callback(
     Output("upload-modal", "is_open"),
     [Input("upload-btn", "n_clicks"),
@@ -831,245 +749,17 @@ def render_tab_content(active_tab):
      Input("upload-cancel-btn", "n_clicks"),
      Input("upload-confirm-btn", "n_clicks")],
     [State("upload-modal", "is_open")],
+    prevent_initial_call=True
 )
 def toggle_upload_modal(upload_clicks, reupload_clicks, cancel_clicks, confirm_clicks, is_open):
-    if upload_clicks or reupload_clicks or cancel_clicks or confirm_clicks:
-        return not is_open
-    return is_open
+    # Check which button was clicked
+    ctx = callback_context
+    if not ctx.triggered:
+        return False
 
+    # Any button click toggles the modal
+    return not is_open
 
-# Callback to handle file upload validation
-@app.callback(
-    [Output('upload-validation', 'children'),
-     Output('upload-confirm-btn', 'disabled')],
-    [Input('algorithm-upload', 'contents')],
-    [State('algorithm-upload', 'filename')]
-)
-def validate_upload(contents, filename):
-    if contents is None:
-        return "", True
-
-    if filename:
-        if filename.endswith(('.py', '.zip')):
-            validation_msg = dbc.Alert(
-                f"✓ File '{filename}' is ready for upload",
-                color="success",
-                style={'background-color': f'{NORD_COLORS["aurora"][3]}20',
-                       'border-color': NORD_COLORS['aurora'][3],
-                       'color': NORD_COLORS['aurora'][3]}
-            )
-            return validation_msg, False
-        else:
-            validation_msg = dbc.Alert(
-                f"✗ Invalid file type. Please upload a .py or .zip file",
-                color="danger",
-                style={'background-color': f'{NORD_COLORS["aurora"][0]}20',
-                       'border-color': NORD_COLORS['aurora'][0],
-                       'color': NORD_COLORS['aurora'][0]}
-            )
-            return validation_msg, True
-
-    return "", True
-
-
-# Callback to process uploaded algorithm
-@app.callback(
-    [Output('upload-status', 'style'),
-     Output('algorithm-info', 'style'),
-     Output('algorithm-details', 'children'),
-     Output('uploaded-algorithm-store', 'children'),
-     Output('test-uploaded-btn', 'disabled'),
-     Output('submit-to-challenge-btn', 'disabled')],
-    [Input('upload-confirm-btn', 'n_clicks')],
-    [State('algorithm-upload', 'contents'),
-     State('algorithm-upload', 'filename'),
-     State('required-libraries', 'value'),
-     State('session-id', 'children')]
-)
-def process_uploaded_algorithm(n_clicks, contents, filename, libraries, session_id):
-    if not n_clicks or contents is None:
-        return (
-            {'display': 'block'}, {'display': 'none'}, "", "", True, True
-        )
-
-    try:
-        # Save uploaded file
-        file_path = save_uploaded_file(contents, filename, session_id)
-
-        if file_path is None:
-            raise Exception("Failed to save uploaded file")
-
-        # Find algorithm files
-        algorithm_files = find_algorithm_files(file_path)
-
-        if not algorithm_files:
-            raise Exception("No Python files with algorithm implementations found")
-
-        # Try to load algorithm from the first valid file
-        algorithm_class = None
-        error_messages = []
-
-        for algo_file in algorithm_files:
-            try:
-                algorithm_class, error = load_algorithm_from_file(algo_file)
-                if algorithm_class:
-                    break
-                if error:
-                    error_messages.append(f"{os.path.basename(algo_file)}: {error}")
-            except Exception as e:
-                error_messages.append(f"{os.path.basename(algo_file)}: {str(e)}")
-
-        if not algorithm_class:
-            error_detail = "\n".join(error_messages) if error_messages else "No valid algorithm class found"
-            raise Exception(f"Could not load algorithm class. {error_detail}")
-
-        # Create algorithm info display
-        algorithm_info = html.Div([
-            html.Div([
-                html.I(className="fas fa-check-circle",
-                       style={'color': NORD_COLORS['aurora'][3], 'margin-right': '10px', 'font-size': '20px'}),
-                html.H5(f"Algorithm Loaded: {algorithm_class.__name__}",
-                        style={'color': NORD_COLORS['aurora'][3], 'display': 'inline-block', 'margin': 0})
-            ], style={'margin-bottom': '15px'}),
-
-            html.Div([
-                html.Strong("File:", style={'color': NORD_COLORS['snow_storm'][1]}),
-                html.Span(f" {filename}", style={'color': NORD_COLORS['snow_storm'][2], 'margin-left': '5px'})
-            ], style={'margin-bottom': '8px'}),
-
-            html.Div([
-                html.Strong("Files Found:", style={'color': NORD_COLORS['snow_storm'][1]}),
-                html.Span(f" {len(algorithm_files)} Python file(s)",
-                          style={'color': NORD_COLORS['snow_storm'][2], 'margin-left': '5px'})
-            ], style={'margin-bottom': '8px'}),
-
-            html.Div([
-                html.Strong("Class Name:", style={'color': NORD_COLORS['snow_storm'][1]}),
-                html.Span(f" {algorithm_class.__name__}",
-                          style={'color': NORD_COLORS['snow_storm'][2], 'margin-left': '5px'})
-            ], style={'margin-bottom': '8px'}),
-
-            html.Div([
-                html.Strong("Required Libraries:", style={'color': NORD_COLORS['snow_storm'][1]}),
-                html.Div(
-                    libraries.strip() if libraries else "None specified",
-                    style={'color': NORD_COLORS['snow_storm'][2], 'margin-top': '5px',
-                           'background-color': NORD_COLORS['polar_night'][2], 'padding': '8px',
-                           'border-radius': '4px', 'font-family': 'monospace', 'font-size': '12px'}
-                )
-            ], style={'margin-bottom': '15px'})
-        ])
-
-        # Store algorithm information
-        algorithm_data = {
-            'class_name': algorithm_class.__name__,
-            'file_path': file_path,
-            'filename': filename,
-            'libraries': libraries,
-            'algorithm_files': algorithm_files,
-            'session_id': session_id
-        }
-
-        return (
-            {'display': 'none'},  # Hide upload status
-            {'display': 'block'},  # Show algorithm info
-            algorithm_info,
-            json.dumps(algorithm_data),
-            False,  # Enable test button
-            False  # Enable submit button
-        )
-
-    except Exception as e:
-        error_info = html.Div([
-            html.Div([
-                html.I(className="fas fa-exclamation-triangle",
-                       style={'color': NORD_COLORS['aurora'][0], 'margin-right': '10px', 'font-size': '20px'}),
-                html.H5("Upload Failed",
-                        style={'color': NORD_COLORS['aurora'][0], 'display': 'inline-block', 'margin': 0})
-            ], style={'margin-bottom': '15px'}),
-
-            dbc.Alert(
-                f"Error: {str(e)}",
-                color="danger",
-                style={'background-color': f'{NORD_COLORS["aurora"][0]}20',
-                       'border-color': NORD_COLORS['aurora'][0],
-                       'color': NORD_COLORS['aurora'][0]}
-            )
-        ])
-
-        return (
-            {'display': 'none'},  # Hide upload status
-            {'display': 'block'},  # Show error info
-            error_info,
-            "",
-            True,  # Disable test button
-            True  # Disable submit button
-        )
-
-
-# Submission modal callbacks
-@app.callback(
-    Output("submission-modal", "is_open"),
-    [Input("submit-to-challenge-btn", "n_clicks"),
-     Input("submission-cancel-btn", "n_clicks"),
-     Input("submission-confirm-btn", "n_clicks")],
-    [State("submission-modal", "is_open")]
-)
-def toggle_submission_modal(submit_clicks, cancel_clicks, confirm_clicks, is_open):
-    if submit_clicks or cancel_clicks or confirm_clicks:
-        return not is_open
-    return is_open
-
-
-@app.callback(
-    [Output('submission-status-store', 'children'),
-     Output('submit-to-challenge-btn', 'children')],
-    [Input('submission-confirm-btn', 'n_clicks')],
-    [State('submission-team-name', 'value'),
-     State('submission-email', 'value'),
-     State('submission-algorithm-name', 'value'),
-     State('submission-description', 'value'),
-     State('uploaded-algorithm-store', 'children')]
-)
-def handle_submission(n_clicks, team_name, email, algorithm_name, description, algorithm_data_json):
-    if not n_clicks:
-        return "", "🏆 Submit to Challenge"
-
-    if not LEADERBOARD_AVAILABLE:
-        return "error:Submission system not available", "❌ Submission Unavailable"
-
-    if not all([team_name, email, algorithm_name, description]):
-        return "error:Missing required fields", "🏆 Submit to Challenge"
-
-    if not algorithm_data_json:
-        return "error:No algorithm uploaded", "🏆 Submit to Challenge"
-
-    try:
-        algorithm_data = json.loads(algorithm_data_json)
-        libraries = algorithm_data.get('libraries', '').split('\n') if algorithm_data.get('libraries') else []
-
-        # Submit to challenge
-        submission_id = submission_manager.submit_algorithm(
-            team_name=team_name,
-            email=email,
-            algorithm_name=algorithm_name,
-            description=description,
-            file_path=algorithm_data['file_path'],
-            libraries=libraries
-        )
-
-        # Start evaluation in background (in production, this would be truly async)
-        def run_evaluation():
-            submission_manager.evaluate_submission_async(submission_id)
-
-        eval_thread = threading.Thread(target=run_evaluation)
-        eval_thread.daemon = True
-        eval_thread.start()
-
-        return f"success:{submission_id}", "✅ Submitted Successfully!"
-
-    except Exception as e:
-        return f"error:{str(e)}", "🏆 Submit to Challenge"
 
 
 # Leaderboard callbacks
@@ -1213,9 +903,6 @@ def update_my_submissions(n_clicks, team_name):
                       style={'color': NORD_COLORS['aurora'][0], 'text-align': 'center', 'padding': '50px'})
 
 
-# Keep existing callbacks for test functionality...
-# (Include all the existing callbacks from the original app)
-
 # Update run test button to work with uploaded algorithms
 @app.callback(
     Output('run-test-btn', 'disabled'),
@@ -1226,10 +913,6 @@ def update_run_test_button(stream_id, algorithm_data):
     has_stream = stream_id is not None
     has_algorithm = algorithm_data and algorithm_data != ""
     return not (has_stream and has_algorithm)
-
-
-# Include other existing callbacks...
-# (The rest of the callbacks would be included here - run_algorithm_test, fullscreen modal, etc.)
 
 def find_concrete_algorithm_class(exec_globals: Dict[str, Any], base_class: Type[BaseAlgorithm]) -> Optional[
     Type[BaseAlgorithm]]:
@@ -1248,10 +931,7 @@ def find_concrete_algorithm_class(exec_globals: Dict[str, Any], base_class: Type
     return None
 
 
-# Add remaining callbacks for completeness...
-
 if __name__ == '__main__':
-    print("\n🌐 Starting Dash server...")
-    print("📍 Open your browser to: http://localhost:8050")
-    print("🛑 Press Ctrl+C to stop the server\n")
-    app.run_server(debug=True, host='0.0.0.0', port=8050)
+    PORT: int = 8050
+    print(f"📍 Open your browser to: http://localhost:{PORT}")
+    app.run_server(debug=True, host='0.0.0.0', port=PORT)

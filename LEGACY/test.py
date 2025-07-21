@@ -24,8 +24,8 @@ def check_conformance(trace: Trace | List[Event], net: tuple[PetriNet, Marking, 
     return result[0]
 
 
-LOG_WITH_DRIFT_PATH: str = "assets/data/streaming_conformance.xes"
-FIRST_MODEL_PATH: str = "assets/data/model_one.pnml"
+LOG_WITH_DRIFT_PATH: str = "../assets/data/streaming_conformance.xes"
+FIRST_MODEL_PATH: str = "../assets/data/model_one.pnml"
 
 MODEL_ONE: tuple[PetriNet, Marking, Marking] = pm4py.read_pnml(FIRST_MODEL_PATH)
 
