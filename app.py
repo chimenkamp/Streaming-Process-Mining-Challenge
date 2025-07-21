@@ -3,65 +3,34 @@
 import inspect
 import os
 import zipfile
-import shutil
-import tempfile
 import uuid
-from pathlib import Path
 import base64
-import io
-import threading
 
 import dash
-from dash import dcc, html, Input, Output, State, callback, clientside_callback, ClientsideFunction, ALL, \
-    callback_context
+from dash import dcc, html, Input, Output, State, callback_context
 import dash_bootstrap_components as dbc
 import plotly.graph_objs as go
-import plotly.express as px
 import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
-import json
 import sys
 import importlib.util
 from typing import Dict, List, Any, Optional, Type
-import traceback
 
-from src.functions import tumbling_window_average
+from src.ui.leaderboard_system import SubmissionManager
+from src.ui.leaderboard_ui import create_leaderboard_layout, create_leaderboard_table, create_performance_chart, \
+    create_recent_activity_list
 
 # Add the src directory to the path so we can import our modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src', 'ui'))
 
 # Import our custom components and classes
-from src.ui.algorithm_base import BaseAlgorithm, EventStream
+from src.ui.algorithm_base import BaseAlgorithm
 from src.ui.styles import get_nord_styles, NORD_COLORS, get_custom_css
 from src.ui.stream_manager import StreamManager
 
-# Import the leaderboard and submission management components
-try:
-    from leaderboard_system import SubmissionManager, SubmissionEntry, EvaluationResult
-    from leaderboard_ui import (
-        create_leaderboard_layout, create_leaderboard_table, create_performance_chart,
-        create_recent_activity_list, create_submission_details_modal_content, get_time_ago
-    )
-
-    LEADERBOARD_AVAILABLE = True
-except ImportError as e:
-    print(f"Warning: Leaderboard system not available: {e}")
-    print("Running in basic mode without leaderboard functionality")
-    LEADERBOARD_AVAILABLE = False
 
 
-    # Create dummy classes to prevent errors
-    class SubmissionManager:
-        def __init__(self, *args, **kwargs):
-            pass
+LEADERBOARD_AVAILABLE = True
 
-        def set_stream_manager(self, *args):
-            pass
-
-
-    def create_leaderboard_layout(*args):
-        return html.Div("Leaderboard not available")
 
 # Initialize Dash app with assets folder
 app = dash.Dash(__name__,

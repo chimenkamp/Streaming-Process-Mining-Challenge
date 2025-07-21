@@ -1,5 +1,5 @@
 .idea
-/uploaded_algorithms
+uploaded_algorithms
 # Ignore Python cache files
 __pycache__/
 # Ignore Python bytecode files

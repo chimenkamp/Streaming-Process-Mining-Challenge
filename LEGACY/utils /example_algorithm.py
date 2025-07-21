@@ -17,8 +17,11 @@ from collections import defaultdict, Counter
 from typing import Dict, Any, Set, Tuple, Optional
 import numpy as np
 
+from src.ui.algorithm_base import BaseAlgorithm
+
+
 # Note: BaseAlgorithm will be imported automatically by the platform
-from algorithm_base import BaseAlgorithm
+
 
 
 class FrequencyBasedConformanceAlgorithm(BaseAlgorithm):

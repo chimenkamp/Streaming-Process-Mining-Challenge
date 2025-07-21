@@ -1,4 +1,12 @@
 # Remaining callbacks and utility functions for the complete enhanced app
+import json
+
+from dash import Output, Input, State, html, clientside_callback, callback_context
+
+from app import app, nord_styles, stream_manager, load_algorithm_from_file
+from src.ui.algorithm_base import EventStream
+from src.ui.styles import NORD_COLORS
+
 
 # Callback to enable/disable controls based on stream selection
 @app.callback(

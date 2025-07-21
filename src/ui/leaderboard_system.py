@@ -580,7 +580,7 @@ class SubmissionManager:
     def __init__(self, upload_directory: str, database_path: str = "challenge_submissions.db"):
         """Initialize submission manager."""
         from src.ui.algorithm_base import BaseAlgorithm
-        from file_upload_utils import AlgorithmUploadManager, AlgorithmLoader
+        from src.file_upload_utils import AlgorithmUploadManager, AlgorithmLoader
         
         self.database = SubmissionDatabase(database_path)
         self.upload_manager = AlgorithmUploadManager(upload_directory)
