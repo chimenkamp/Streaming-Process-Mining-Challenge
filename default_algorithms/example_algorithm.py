@@ -8,8 +8,8 @@ Required libraries:
 pandas
 numpy
 
-Author: Example Team
-Description: A simple frequency-based conformance checking algorithm
+Author: AVOCADO Platform
+Description: Default example algorithms for all users
 """
 
 import sys
@@ -219,180 +219,47 @@ class FrequencyBasedConformanceAlgorithm(BaseAlgorithm):
         self._case_conformance_scores.clear()
 
 
-class AdaptiveConformanceAlgorithm(BaseAlgorithm):
+class SimpleBaselineAlgorithm(BaseAlgorithm):
     """
-    An adaptive conformance checking algorithm that adjusts to concept drift.
+    A simple baseline algorithm that returns random conformance scores.
     
-    This algorithm maintains a sliding window of recent patterns and
-    gradually adapts to changing process behavior.
-    """
-    
-    def __init__(self, window_size: int = 1000, adaptation_rate: float = 0.01):
-        """
-        Initialize the adaptive algorithm.
-        
-        Args:
-            window_size: Size of the sliding window for adaptation
-            adaptation_rate: Rate at which to adapt to new patterns
-        """
-        super().__init__()
-        
-        self.window_size = window_size
-        self.adaptation_rate = adaptation_rate
-        
-        # Pattern storage
-        self._pattern_buffer = []  # Sliding window of recent patterns
-        self._base_patterns = defaultdict(float)  # Base patterns from learning
-        self._current_patterns = defaultdict(float)  # Current adapted patterns
-        
-        # Case tracking
-        self._case_contexts = {}  # Context for each case
-        
-        # Constants
-        self.CASE_ID_KEY = 'case:concept:name'
-        self.ACTIVITY_KEY = 'concept:name'
-    
-    def learn(self, event: Dict[str, Any]) -> None:
-        """Learn base patterns during learning phase."""
-        self.learning_events += 1
-        
-        case_id = event.get(self.CASE_ID_KEY)
-        activity = event.get(self.ACTIVITY_KEY)
-        
-        if not case_id or not activity:
-            return
-        
-        # Extract pattern
-        pattern = self._extract_pattern(case_id, activity)
-        if pattern:
-            self._base_patterns[pattern] += 1.0
-        
-        # Update case context
-        if case_id not in self._case_contexts:
-            self._case_contexts[case_id] = []
-        self._case_contexts[case_id].append(activity)
-    
-    def conformance(self, event: Dict[str, Any]) -> float:
-        """Calculate adaptive conformance score."""
-        self.conformance_events += 1
-        
-        case_id = event.get(self.CASE_ID_KEY)
-        activity = event.get(self.ACTIVITY_KEY)
-        
-        if not case_id or not activity:
-            return 0.5
-        
-        # Extract current pattern
-        pattern = self._extract_pattern(case_id, activity)
-        
-        if not pattern:
-            return 0.5
-        
-        # Calculate conformance based on current patterns
-        conformance = self._calculate_adaptive_conformance(pattern)
-        
-        # Update sliding window and adapt
-        self._update_patterns(pattern, conformance)
-        
-        # Update case context
-        if case_id not in self._case_contexts:
-            self._case_contexts[case_id] = []
-        self._case_contexts[case_id].append(activity)
-        
-        return conformance
-    
-    def _extract_pattern(self, case_id: str, activity: str) -> Optional[str]:
-        """Extract pattern from current event and case context."""
-        if case_id not in self._case_contexts or not self._case_contexts[case_id]:
-            return f"START->{activity}"
-        
-        # Use last activity as context
-        prev_activity = self._case_contexts[case_id][-1]
-        return f"{prev_activity}->{activity}"
-    
-    def _calculate_adaptive_conformance(self, pattern: str) -> float:
-        """Calculate conformance based on adapted patterns."""
-        base_score = self._current_patterns.get(pattern, 0.0)
-        
-        # Normalize and convert to probability
-        total_weight = sum(self._current_patterns.values())
-        if total_weight > 0:
-            probability = base_score / total_weight
-        else:
-            probability = 0.0
-        
-        # Scale to [0, 1] range
-        return min(1.0, probability * 10)  # Scale factor for better discrimination
-    
-    def _update_patterns(self, pattern: str, conformance: float):
-        """Update patterns using sliding window and adaptation."""
-        # Add to buffer
-        self._pattern_buffer.append((pattern, conformance))
-        
-        # Maintain window size
-        if len(self._pattern_buffer) > self.window_size:
-            self._pattern_buffer.pop(0)
-        
-        # Update current patterns with adaptation
-        self._adapt_patterns()
-    
-    def _adapt_patterns(self):
-        """Adapt patterns based on recent observations."""
-        # Start with base patterns
-        self._current_patterns = self._base_patterns.copy()
-        
-        # Adapt based on recent patterns
-        recent_patterns = defaultdict(float)
-        for pattern, conformance in self._pattern_buffer[-100:]:  # Use last 100 observations
-            recent_patterns[pattern] += conformance
-        
-        # Blend base and recent patterns
-        for pattern, recent_weight in recent_patterns.items():
-            if pattern in self._current_patterns:
-                # Adaptive blending
-                old_weight = self._current_patterns[pattern]
-                new_weight = (1 - self.adaptation_rate) * old_weight + self.adaptation_rate * recent_weight
-                self._current_patterns[pattern] = new_weight
-            else:
-                # New pattern
-                self._current_patterns[pattern] = self.adaptation_rate * recent_weight
-    
-    def on_learning_phase_end(self, stream_info: Dict[str, Any]):
-        """Initialize current patterns from base patterns."""
-        super().on_learning_phase_end(stream_info)
-        
-        # Normalize base patterns
-        total = sum(self._base_patterns.values())
-        if total > 0:
-            for pattern in self._base_patterns:
-                self._base_patterns[pattern] /= total
-        
-        # Initialize current patterns
-        self._current_patterns = self._base_patterns.copy()
-
-
-# Example of how to create a simple wrapper class if needed
-class SubmissionAlgorithm(FrequencyBasedConformanceAlgorithm):
-    """
-    Main algorithm class for submission.
-    
-    This is a simple wrapper around FrequencyBasedConformanceAlgorithm
-    that can be easily identified by the platform.
+    This serves as a basic example and baseline for comparison.
     """
     
     def __init__(self):
+        """Initialize the baseline algorithm."""
         super().__init__()
-        # Override default parameters if needed
-        self.min_frequency_threshold = 3
-        self.smoothing_factor = 0.05
+        self._random_seed = 42
+        self._activity_seen = set()
+        
+    def learn(self, event: Dict[str, Any]) -> None:
+        """Learn from events by simply tracking seen activities."""
+        self.learning_events += 1
+        
+        activity = event.get('concept:name')
+        if activity:
+            self._activity_seen.add(activity)
     
-    def get_submission_info(self) -> Dict[str, str]:
-        """Get information for submission."""
+    def conformance(self, event: Dict[str, Any]) -> float:
+        """Return simple conformance based on whether activity was seen in learning."""
+        self.conformance_events += 1
+        
+        activity = event.get('concept:name')
+        if not activity:
+            return 0.5
+        
+        # Simple rule: if activity was seen during learning, return high conformance
+        if activity in self._activity_seen:
+            return 0.8
+        else:
+            return 0.2
+    
+    def get_algorithm_info(self) -> Dict[str, Any]:
+        """Get algorithm information."""
         return {
-            'team_name': 'Example Team',
-            'algorithm_name': 'Frequency-Based Conformance Checker',
-            'version': '1.0',
-            'description': 'A frequency-based algorithm that learns transition patterns and assesses conformance based on learned probabilities.'
+            'name': 'SimpleBaselineAlgorithm',
+            'description': 'Simple baseline algorithm for demonstration',
+            'activities_learned': len(self._activity_seen)
         }
 
 

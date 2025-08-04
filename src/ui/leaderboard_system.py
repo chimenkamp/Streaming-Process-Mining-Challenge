@@ -8,6 +8,7 @@ for the Streaming Process Mining Challenge.
 import json
 import sqlite3
 import hashlib
+import traceback
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -17,6 +18,20 @@ import pandas as pd
 import numpy as np
 from collections import defaultdict
 
+def make_json_serializable(obj: Any) -> Any:
+    """
+    Recursively convert datetime objects in dictionaries/lists to ISO 8601 strings.
+
+    :param obj: Arbitrary data (dict, list, etc.).
+    :return: JSON-serializable object.
+    """
+    if isinstance(obj, dict):
+        return {k: make_json_serializable(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [make_json_serializable(item) for item in obj]
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    return obj
 
 @dataclass
 class SubmissionEntry:
@@ -114,25 +129,27 @@ class SubmissionDatabase:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute("""
-                    INSERT INTO submissions (
-                        submission_id, team_name, email, algorithm_name, description,
-                        submission_time, file_hash, file_path, libraries, status,
-                        evaluation_results, leaderboard_scores
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    submission.submission_id,
-                    submission.team_name,
-                    submission.email,
-                    submission.algorithm_name,
-                    submission.description,
-                    submission.submission_time.isoformat(),
-                    submission.file_hash,
-                    submission.file_path,
-                    json.dumps(submission.libraries),
-                    submission.status,
-                    json.dumps(submission.evaluation_results) if submission.evaluation_results else None,
-                    json.dumps(submission.leaderboard_scores) if submission.leaderboard_scores else None
-                ))
+                             INSERT INTO submissions (submission_id, team_name, email, algorithm_name, description,
+                                                      submission_time, file_hash, file_path, libraries, status,
+                                                      evaluation_results, leaderboard_scores)
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                             """, (
+                                 submission.submission_id,
+                                 submission.team_name,
+                                 submission.email,
+                                 submission.algorithm_name,
+                                 submission.description,
+                                 submission.submission_time.isoformat(),
+                                 submission.file_hash,
+                                 submission.file_path,
+                                 json.dumps(make_json_serializable(submission.libraries)),
+                                 submission.status,
+                                 json.dumps(make_json_serializable(
+                                     submission.evaluation_results)) if submission.evaluation_results else None,
+                                 json.dumps(make_json_serializable(
+                                     submission.leaderboard_scores)) if submission.leaderboard_scores else None
+                             ))
+
             return True
         except Exception as e:
             print(f"Error adding submission: {e}")
@@ -144,19 +161,25 @@ class SubmissionDatabase:
         """Update submission status and results."""
         try:
             with sqlite3.connect(self.db_path) as conn:
-                conn.execute("""
-                    UPDATE submissions 
-                    SET status = ?, evaluation_results = ?, leaderboard_scores = ?
-                    WHERE submission_id = ?
-                """, (
-                    status,
-                    json.dumps(evaluation_results) if evaluation_results else None,
-                    json.dumps(leaderboard_scores) if leaderboard_scores else None,
-                    submission_id
-                ))
+                with sqlite3.connect(self.db_path) as conn:
+                    conn.execute("""
+                                 UPDATE submissions
+                                 SET status             = ?,
+                                     evaluation_results = ?,
+                                     leaderboard_scores = ?
+                                 WHERE submission_id = ?
+                                 """, (
+                                     status,
+                                     json.dumps(
+                                         make_json_serializable(evaluation_results)) if evaluation_results else None,
+                                     json.dumps(
+                                         make_json_serializable(leaderboard_scores)) if leaderboard_scores else None,
+                                     submission_id
+                                 ))
             return True
         except Exception as e:
             print(f"Error updating submission: {e}")
+            traceback.print_exc()
             return False
     
     def add_evaluation(self, evaluation: EvaluationResult) -> bool:
@@ -179,8 +202,8 @@ class SubmissionDatabase:
                     evaluation.global_errors,
                     evaluation.avg_processing_time,
                     evaluation.total_runtime,
-                    json.dumps(evaluation.conformance_scores),
-                    json.dumps(evaluation.baseline_scores),
+                    make_json_serializable(json.dumps(evaluation.conformance_scores)),
+                    make_json_serializable(json.dumps(evaluation.baseline_scores)),
                     evaluation.timestamp.isoformat()
                 ))
             return True
@@ -278,7 +301,7 @@ class EvaluationEngine:
         self.algorithm_loader = algorithm_loader
         
         # Evaluation configuration
-        self.test_streams = ['simple_sequential']  # Add more as available
+        self.test_streams = ['simple_concept_drift', "gradual_concept_drift", "early_sudden_drift"]  # Add more as available
         self.test_cases = [100, 250, 500]  # Different case counts for robustness
         self.timeout_seconds = 300  # 5 minutes per test
     
@@ -409,6 +432,8 @@ class EvaluationEngine:
             
         except Exception as e:
             print(f"Error in single evaluation: {e}")
+            traceback.print_exc()
+
             return None
     
     def _calculate_leaderboard_scores(self, overall_scores: Dict[str, List[float]]) -> Dict[str, float]:

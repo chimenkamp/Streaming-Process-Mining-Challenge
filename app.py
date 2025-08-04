@@ -30,7 +30,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src', 'ui'))
 from src.ui.algorithm_base import BaseAlgorithm
 from src.ui.algorithm_executor import AlgorithmExecutor, ExecutionResult
 
-
 from src.ui.styles import get_nord_styles, NORD_COLORS, get_custom_css
 from src.ui.stream_manager import StreamManager
 
@@ -40,8 +39,6 @@ from src.ui.database_manager import DatabaseManager, db_manager
 from src.ui.algorithm_testing_engine import AlgorithmTestingEngine, validate_algorithm_file
 
 ENHANCED_FEATURES = True
-
-
 
 LEADERBOARD_AVAILABLE = True
 
@@ -92,7 +89,7 @@ else:
 UPLOAD_DIRECTORY = os.path.join(os.getcwd(), "uploaded_algorithms")
 os.makedirs(UPLOAD_DIRECTORY, exist_ok=True)
 
-# Use database manager
+# Use enhanced database manager with default algorithm support
 user_db = db_manager
 algorithm_executor = AlgorithmExecutor(BaseAlgorithm, stream_manager, db_manager)
 
@@ -144,7 +141,8 @@ def create_navigation():
         dbc.Tab(label="📊 My Algorithms", tab_id="my-algorithms", active_tab_style={'fontWeight': 'bold'}),
         dbc.Tab(label="🏆 Leaderboard", tab_id="leaderboard", active_tab_style={'fontWeight': 'bold'}),
         dbc.Tab(label="📚 Documentation", tab_id="documentation", active_tab_style={'fontWeight': 'bold'})
-    ], id="main-tabs", active_tab="upload", style={'marginBottom': '20px', 'color': NORD_COLORS['snow_storm'][2]})
+    ], id="main-tabs", active_tab="my-algorithms",
+        style={'marginBottom': '20px', 'color': NORD_COLORS['snow_storm'][2]})
 
 
 # Create upload layout
@@ -153,10 +151,19 @@ def create_upload_layout():
         dbc.Col([
             dbc.Card([
                 dbc.CardHeader([
-                    html.H4("Upload Algorithm File",
+                    html.H4("Upload Your Own Algorithm",
                             style={'color': NORD_COLORS['snow_storm'][2], 'margin': 0})
                 ], style=nord_styles['card_header']),
                 dbc.CardBody([
+                    dbc.Alert([
+                        html.H6("💡 Getting Started", style={'margin': 0, 'color': NORD_COLORS['frost'][2]}),
+                        html.P(
+                            "New to the platform? Check out the default algorithms in the 'My Algorithms' tab to see examples and test them first!",
+                            style={'margin': '10px 0 0 0', 'color': NORD_COLORS['snow_storm'][1]})
+                    ], color="info", style={'backgroundColor': f'{NORD_COLORS["frost"][2]}20',
+                                            'borderColor': NORD_COLORS['frost'][2],
+                                            'marginBottom': '20px'}),
+
                     dcc.Upload(
                         id='algorithm-file-upload',
                         children=html.Div([
@@ -368,28 +375,54 @@ def create_test_layout():
     ])
 
 
-# Create my algorithms layout
+# Create my algorithms layout with enhanced default algorithm support
 def create_my_algorithms_layout():
     return html.Div([
         dbc.Card([
             dbc.CardHeader([
-                html.H5("📊 My Uploaded Algorithms",
+                html.H5("📊 My Algorithms",
                         style={'color': NORD_COLORS['snow_storm'][2], 'margin': 0})
             ], style=nord_styles['card_header']),
             dbc.CardBody([
+                dbc.Alert([
+                    html.H6("🎯 Welcome to AVOCADO!", style={'margin': 0, 'color': NORD_COLORS['aurora'][3]}),
+                    html.P(
+                        "Get started by testing the default algorithms below. They demonstrate how to implement conformance checking algorithms for the platform.",
+                        style={'margin': '10px 0 0 0', 'color': NORD_COLORS['snow_storm'][1]})
+                ], color="success", style={'backgroundColor': f'{NORD_COLORS["aurora"][3]}20',
+                                           'borderColor': NORD_COLORS['aurora'][3],
+                                           'marginBottom': '20px'}),
+
                 html.Div(id="user-algorithms-list"),
                 html.Hr(style={'borderColor': NORD_COLORS['polar_night'][3]}),
-                dbc.Button(
-                    "🏆 Submit Best Algorithm to Challenge",
-                    id="submit-to-challenge-btn",
-                    color="primary",
-                    disabled=True,
-                    style={
-                        'backgroundColor': NORD_COLORS['frost'][2],
-                        'borderColor': NORD_COLORS['frost'][2],
-                        'borderRadius': '6px'
-                    }
-                )
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Button(
+                            "🏆 Submit Best Algorithm to Challenge",
+                            id="submit-to-challenge-btn",
+                            color="primary",
+                            disabled=True,
+                            style={
+                                'backgroundColor': NORD_COLORS['frost'][2],
+                                'borderColor': NORD_COLORS['frost'][2],
+                                'borderRadius': '6px'
+                            }
+                        )
+                    ], width=6),
+                    dbc.Col([
+                        dbc.Button(
+                            "📤 Upload Your Own Algorithm",
+                            id="goto-upload-from-myalgs-btn",
+                            color="outline-primary",
+                            style={
+                                'borderColor': NORD_COLORS['frost'][2],
+                                'color': NORD_COLORS['frost'][2],
+                                'borderRadius': '6px',
+                                'width': '100%'
+                            }
+                        )
+                    ], width=6)
+                ])
             ], style=nord_styles['card_body'])
         ], style=nord_styles['card'])
     ])
@@ -410,9 +443,14 @@ def create_documentation_layout():
 
 ## Getting Started
 
-1. **Upload**: Upload your algorithm implementation on the Upload tab
-2. **Test**: Test your algorithms on different event streams  
-3. **Submit**: Submit your best algorithm to the challenge leaderboard
+**New users start with default example algorithms!** When you first visit the platform, you'll find pre-loaded example algorithms in your "My Algorithms" tab that demonstrate how to implement conformance checking algorithms.
+
+### Quick Start Guide
+
+1. **Explore Examples**: Go to "My Algorithms" to see the default algorithms
+2. **Test Examples**: Use the "Test Algorithm" tab to run the examples on different streams  
+3. **Upload Your Own**: Create your own algorithm and upload it via the "Upload Algorithm" tab
+4. **Submit to Challenge**: Submit your best performing algorithm to the leaderboard
 
 ## Algorithm Requirements
 
@@ -437,6 +475,20 @@ Events are dictionaries with these keys:
 - `time:timestamp`: Event timestamp
 - `concept:origin`: Origin log (Only in testing)
 
+## Default Algorithms
+
+The platform provides two example algorithms:
+
+### 1. Frequency-Based Conformance Checker
+- **Approach**: Learns activity transition frequencies during learning phase
+- **Conformance**: Uses transition probabilities to assess conformance
+- **Good for**: Understanding the basic approach to conformance checking
+
+### 2. Simple Baseline Algorithm
+- **Approach**: Basic rule-based conformance checking
+- **Conformance**: Returns high scores for activities seen during learning
+- **Good for**: Understanding the minimal implementation requirements
+
 ## Evaluation Metrics
 
 - **Accuracy**: Percentage of predictions within 0.1 of baseline
@@ -445,12 +497,35 @@ Events are dictionaries with these keys:
 - **Speed**: Average processing time per event
 - **Robustness**: Number of major errors (>0.3 difference)
 
+## Test Streams
+
+The platform provides several concept drift streams:
+- **Simple Concept Drift**: Sudden change at 60% of stream
+- **Gradual Concept Drift**: Gradual transition between 30-70%
+- **Early Sudden Drift**: Concept drift at 20% of stream
+
 ## Workflow
 
-1. Upload your algorithm with descriptive information
-2. Test it on various streams to validate performance
-3. View all your uploaded algorithms in "My Algorithms"
-4. Submit your best performing algorithm to the challenge
+1. **Start with Defaults**: Test the provided example algorithms
+2. **Understand Performance**: Analyze how different approaches perform
+3. **Develop Your Own**: Create improved algorithms based on insights
+4. **Test and Iterate**: Use the testing environment to refine your approach
+5. **Submit to Challenge**: Submit your best algorithm to compete
+
+## Tips for Success
+
+- Start by understanding how the default algorithms work
+- Test on different streams to understand concept drift
+- Focus on both accuracy and speed
+- Use the learning phase effectively to build robust models
+- Consider adaptive approaches for concept drift scenarios
+
+## Support
+
+If you encounter issues or have questions:
+- Check the default algorithm implementations for reference
+- Test your algorithms thoroughly before submission
+- Review the evaluation metrics to understand scoring
                         """, style={'color': NORD_COLORS['snow_storm'][2]})
                     ], style=nord_styles['card_body'])
                 ], style=nord_styles['card'])
@@ -525,6 +600,7 @@ def render_tab_content(active_tab):
         return html.Div("Select a tab")
 
 
+# Enhanced client-side callback for user token management and default algorithm seeding
 app.clientside_callback(
     """
     function(n_intervals) {
@@ -548,6 +624,29 @@ app.clientside_callback(
     [Input('interval-component', 'n_intervals')],
     prevent_initial_call=False
 )
+
+
+# Enhanced callback to automatically create user and seed defaults
+@app.callback(
+    Output('algorithm-refresh-trigger', 'children', allow_duplicate=True),
+    [Input('user-token-store', 'children')],
+    prevent_initial_call=True
+)
+def ensure_user_exists_with_defaults(token):
+    """Ensure user exists and has default algorithms seeded."""
+    if not token:
+        return dash.no_update
+
+    try:
+        # This will create user if not exists and seed default algorithms
+        user_db.create_or_update_user(token, email=f"user_{token[:8]}@platform.local")
+
+        # Return timestamp to trigger refresh
+        import time
+        return str(int(time.time()))
+    except Exception as e:
+        logger.error(f"Error ensuring user exists: {e}")
+        return dash.no_update
 
 
 # File upload validation callback
@@ -623,7 +722,8 @@ def handle_algorithm_upload(n_clicks, contents, filename, algorithm_name,
             file_hash=file_hash,
             description=description,
             required_libraries=required_libs,
-            file_size=file_size
+            file_size=file_size,
+            is_default=False  # User-uploaded algorithms are not defaults
         )
 
         if algorithm_id:
@@ -653,7 +753,7 @@ def handle_algorithm_upload(n_clicks, contents, filename, algorithm_name,
 def load_user_algorithms_for_testing(active_tab: str, refresh_trigger: str, selected_algorithm_id: str,
                                      token: str) -> html.Div:
     """
-    Loads the user's algorithms, highlighting the selected one and showing new options.
+    Loads the user's algorithms, highlighting the selected one and showing enhanced info for defaults.
     """
     if active_tab != "test":
         return html.Div()
@@ -671,13 +771,34 @@ def load_user_algorithms_for_testing(active_tab: str, refresh_trigger: str, sele
 
     if not algorithms:
         return html.Div([
-            html.P("No algorithms uploaded yet.", style={'color': NORD_COLORS['snow_storm'][0], 'textAlign': 'center'}),
-            html.P("Go to the Upload tab to upload your first algorithm.",
-                   style={'color': NORD_COLORS['snow_storm'][0], 'textAlign': 'center', 'fontSize': '12px'})
+            html.P("No algorithms available yet.",
+                   style={'color': NORD_COLORS['snow_storm'][0], 'textAlign': 'center'}),
+            html.P("This should not happen - default algorithms should be automatically loaded.",
+                   style={'color': NORD_COLORS['aurora'][0], 'textAlign': 'center', 'fontSize': '12px'})
         ])
 
     algorithm_cards: list = []
-    for alg in algorithms:
+
+    # Separate defaults and user algorithms
+    default_algorithms = [alg for alg in algorithms if alg.is_default]
+    user_algorithms = [alg for alg in algorithms if not alg.is_default]
+
+    # Add section header for defaults if any exist
+    if default_algorithms:
+        algorithm_cards.append(
+            html.H6("📋 Default Example Algorithms",
+                    style={'color': NORD_COLORS['aurora'][3], 'marginTop': '10px', 'marginBottom': '15px'})
+        )
+
+    # Process all algorithms
+    for alg in default_algorithms + user_algorithms:
+        if alg == default_algorithms[0] and user_algorithms:
+            # Add section header for user algorithms
+            algorithm_cards.append(
+                html.H6("👤 Your Uploaded Algorithms",
+                        style={'color': NORD_COLORS['frost'][2], 'marginTop': '20px', 'marginBottom': '15px'})
+            )
+
         is_selected: bool = alg.id == selected_id
 
         status_color: str = {
@@ -686,16 +807,30 @@ def load_user_algorithms_for_testing(active_tab: str, refresh_trigger: str, sele
             'error': NORD_COLORS['aurora'][0]
         }.get(getattr(alg, 'status', 'uploaded'), NORD_COLORS['snow_storm'][1])
 
+        # Different styling for defaults vs user algorithms
+        if alg.is_default:
+            card_border = f"2px solid {NORD_COLORS['aurora'][3]}"
+            card_bg = NORD_COLORS['polar_night'][1]
+            default_badge = dbc.Badge("Default", color="success", className="me-2",
+                                      style={'fontSize': '10px'})
+        else:
+            card_border = f"2px solid {NORD_COLORS['frost'][2]}"
+            card_bg = NORD_COLORS['polar_night'][1]
+            default_badge = None
+
         card_content: list
         card_style: dict
 
         if is_selected:
             # --- Style and content for a SELECTED card ---
-            card_style = {'marginBottom': '10px', 'border': f"2px solid {NORD_COLORS['frost'][2]}",
-                          'backgroundColor': NORD_COLORS['polar_night'][1], 'color': NORD_COLORS['snow_storm'][0]}
+            card_style = {'marginBottom': '10px', 'border': f"3px solid {NORD_COLORS['frost'][2]}",
+                          'backgroundColor': card_bg, 'color': NORD_COLORS['snow_storm'][0]}
             card_content = [
-                html.H5(getattr(alg, 'algorithm_name', 'Unknown Algorithm'),
-                        style={'color': NORD_COLORS['snow_storm'][2]}),
+                html.Div([
+                    default_badge,
+                    html.H6(getattr(alg, 'algorithm_name', 'Unknown Algorithm'),
+                            style={'color': NORD_COLORS['snow_storm'][2], 'display': 'inline'})
+                ]),
                 html.Hr(style={'backgroundColor': NORD_COLORS['aurora'][2], 'height': '3px', 'border': 'none'}),
                 html.P([html.Strong("File: "), getattr(alg, 'filename', 'N/A')]),
                 html.P([html.Strong("Status: "),
@@ -713,15 +848,28 @@ def load_user_algorithms_for_testing(active_tab: str, refresh_trigger: str, sele
             ]
         else:
             # --- Style and content for an UNSELECTED card ---
-            card_style = {'marginBottom': '10px', 'border': f"2px solid {NORD_COLORS['frost'][2]}",
-                          'backgroundColor': NORD_COLORS['polar_night'][1], 'color': NORD_COLORS['snow_storm'][0]}
+            card_style = {'marginBottom': '10px', 'border': card_border,
+                          'backgroundColor': card_bg, 'color': NORD_COLORS['snow_storm'][0]}
             card_content = [
-                html.H5(getattr(alg, 'algorithm_name', 'Unknown Algorithm'),
-                        style={'color': NORD_COLORS['snow_storm'][2]}),
+                html.Div([
+                    default_badge,
+                    html.H6(getattr(alg, 'algorithm_name', 'Unknown Algorithm'),
+                            style={'color': NORD_COLORS['snow_storm'][2], 'display': 'inline'})
+                ]),
                 html.Hr(style={'backgroundColor': NORD_COLORS['aurora'][2], 'height': '3px', 'border': 'none'}),
                 html.P([html.Strong("File: "), getattr(alg, 'filename', 'N/A')]),
                 html.P([html.Strong("Status: "),
-                        html.Span(getattr(alg, 'status', 'unknown').title(), style={'color': status_color})]),
+                        html.Span(getattr(alg, 'status', 'unknown').title(), style={'color': status_color})])
+            ]
+
+            # Add description for default algorithms
+            if alg.is_default and alg.description:
+                card_content.append(
+                    html.P(alg.description[:100] + "..." if len(alg.description) > 100 else alg.description,
+                           style={'fontSize': '12px', 'color': NORD_COLORS['snow_storm'][0], 'fontStyle': 'italic'})
+                )
+
+            card_content.append(
                 dbc.Button(
                     "Select for Testing",
                     id={'type': 'select-algorithm-btn', 'index': alg.id},
@@ -729,7 +877,7 @@ def load_user_algorithms_for_testing(active_tab: str, refresh_trigger: str, sele
                     style={'backgroundColor': NORD_COLORS['polar_night'][0], 'borderColor': NORD_COLORS['frost'][2],
                            'width': '100%'}
                 )
-            ]
+            )
 
         algorithm_cards.append(dbc.Card(dbc.CardBody(card_content), style=card_style))
 
@@ -804,8 +952,7 @@ def update_test_stream_description(stream_id):
         return f"Error loading stream description: {str(e)}", {'display': 'block'}
 
 
-# Run algorithm test
-
+# Run algorithm test (unchanged)
 @app.callback(
     [Output('test-results-plot', 'figure'),
      Output('test-results-plot', 'style'),
@@ -994,7 +1141,7 @@ def run_algorithm_test(n_clicks, selected_algorithm_id, stream_id, num_cases, to
         return {}, {'display': 'none'}, {'display': 'block'}, error_display, ""
 
 
-# Display user algorithms using pattern matching for delete buttons
+# Enhanced display user algorithms callback with default algorithm support
 @app.callback(
     Output('user-algorithms-list', 'children'),
     [Input('main-tabs', 'active_tab'),
@@ -1016,102 +1163,175 @@ def display_user_algorithms(active_tab, token, refresh_trigger):
 
     if not algorithms:
         return html.Div([
-            html.P("No algorithms uploaded yet.",
+            html.P("No algorithms available.",
                    style={'color': NORD_COLORS['snow_storm'][0], 'textAlign': 'center', 'padding': '50px'}),
-            dbc.Button("Upload Your First Algorithm",
-                       id="goto-upload-btn", color="primary", size="lg")
+            html.P("This should not happen - default algorithms should be loaded automatically.",
+                   style={'color': NORD_COLORS['aurora'][0], 'textAlign': 'center', 'fontSize': '12px'})
         ])
 
+    # Separate defaults and user algorithms
+    default_algorithms = [alg for alg in algorithms if alg.is_default]
+    user_algorithms = [alg for alg in algorithms if not alg.is_default]
+
     algorithm_cards = []
-    for i, alg in enumerate(algorithms):
-        try:
-            status_color = {
-                'uploaded': NORD_COLORS['frost'][2],
-                'tested': NORD_COLORS['aurora'][3],
-                'error': NORD_COLORS['aurora'][0]
-            }.get(getattr(alg, 'status', 'uploaded'), NORD_COLORS['snow_storm'][1])
 
-            # Determine if algorithm has test results
-            has_test_results = (hasattr(alg, 'test_results') and alg.test_results and
-                                isinstance(alg.test_results, dict))
+    # Add default algorithms section
+    if default_algorithms:
+        algorithm_cards.append(
+            html.H5("📋 Default Example Algorithms",
+                    style={'color': NORD_COLORS['aurora'][3], 'marginBottom': '20px', 'marginTop': '10px'})
+        )
 
-            card_body_content = [
-                dbc.Row([
-                    dbc.Col([
-                        html.P([html.Strong("File: "), getattr(alg, 'filename', 'N/A')]),
-                        html.P([html.Strong("Uploaded: "),
-                                getattr(alg, 'upload_time', 'Unknown').strftime('%Y-%m-%d %H:%M')
-                                if hasattr(alg, 'upload_time') and alg.upload_time else 'Unknown']),
-                        html.P([
-                            html.Strong("Status: "),
-                            html.Span(getattr(alg, 'status', 'unknown').title(), style={'color': status_color})
-                        ]),
-                        html.P([
-                            html.Strong("Tests Run: "),
-                            str(getattr(alg, 'test_count', 0))
-                        ])
-                    ], width=8),
-                    dbc.Col([
-                        dbc.ButtonGroup([
-                            dbc.Button("🗑️ Delete",
-                                       id={'type': 'delete-algorithm-btn', 'index': getattr(alg, 'id', i)},
-                                       size="sm", color="danger")
-                        ], vertical=True, style={'width': '100%'})
-                    ], width=4)
-                ])
-            ]
+        for i, alg in enumerate(default_algorithms):
+            algorithm_cards.append(create_algorithm_card(alg, i, is_default=True))
 
-            # Add test results if available
-            if has_test_results:
-                metrics = alg.test_results.get('metrics', {})
-                execution_time = alg.test_results.get('execution_time', 0)
+    # Add user algorithms section
+    if user_algorithms:
+        algorithm_cards.append(
+            html.H5("👤 Your Uploaded Algorithms",
+                    style={'color': NORD_COLORS['frost'][2], 'marginBottom': '20px', 'marginTop': '30px'})
+        )
 
-                # Calculate composite score
-                composite_score = algorithm_executor._calculate_composite_score(metrics)
-
-                test_results_section = html.Div([
-                    html.Hr(style={'borderColor': NORD_COLORS['polar_night'][3], 'margin': '10px 0'}),
-                    html.H6("📊 Latest Test Results",
-                            style={'color': NORD_COLORS['snow_storm'][2], 'marginBottom': '10px'}),
-                    dbc.Row([
-                        dbc.Col([
-                            html.Small(f"Accuracy: {metrics.get('accuracy', 0):.1%}",
-                                       style={'color': NORD_COLORS['aurora'][3]})
-                        ], width=4),
-                        dbc.Col([
-                            html.Small(f"MAE: {metrics.get('mae', 0):.3f}",
-                                       style={'color': NORD_COLORS['aurora'][1]})
-                        ], width=4),
-                        dbc.Col([
-                            html.Small(f"Score: {composite_score:.3f}",
-                                       style={'color': NORD_COLORS['frost'][2], 'fontWeight': 'bold'})
-                        ], width=4)
-                    ]),
-                    html.Small(f"Execution: {execution_time:.2f}s",
-                               style={'color': NORD_COLORS['snow_storm'][0]})
-                ])
-                card_body_content.append(test_results_section)
-
-            card = dbc.Card([
-                dbc.CardHeader([
-                    html.H6(getattr(alg, 'algorithm_name', 'Unknown Algorithm'),
-                            style={'color': NORD_COLORS['snow_storm'][2], 'margin': 0})
-                ]),
-                dbc.CardBody(card_body_content)
-            ], style={'marginBottom': '15px'})
-
-            algorithm_cards.append(card)
-
-        except Exception as e:
-            error_card = dbc.Card([
-                dbc.CardBody([
-                    html.P(f"Error displaying algorithm: {str(e)}",
-                           style={'color': NORD_COLORS['aurora'][0]})
-                ])
-            ], style={'marginBottom': '15px'})
-            algorithm_cards.append(error_card)
+        for i, alg in enumerate(user_algorithms):
+            algorithm_cards.append(create_algorithm_card(alg, i + len(default_algorithms), is_default=False))
+    elif not user_algorithms and default_algorithms:
+        algorithm_cards.append(
+            html.Div([
+                html.H5("👤 Your Uploaded Algorithms",
+                        style={'color': NORD_COLORS['frost'][2], 'marginBottom': '15px', 'marginTop': '30px'}),
+                html.P(
+                    "No custom algorithms uploaded yet. Try testing the default algorithms above, then upload your own!",
+                    style={'color': NORD_COLORS['snow_storm'][0], 'textAlign': 'center', 'fontStyle': 'italic'})
+            ])
+        )
 
     return html.Div(algorithm_cards)
+
+
+def create_algorithm_card(alg, index, is_default=False):
+    """Create an algorithm card with appropriate styling and functionality."""
+    try:
+        status_color = {
+            'uploaded': NORD_COLORS['frost'][2],
+            'tested': NORD_COLORS['aurora'][3],
+            'error': NORD_COLORS['aurora'][0]
+        }.get(getattr(alg, 'status', 'uploaded'), NORD_COLORS['snow_storm'][1])
+
+        # Determine if algorithm has test results
+        has_test_results = (hasattr(alg, 'test_results') and alg.test_results and
+                            isinstance(alg.test_results, dict))
+
+        # Different styling for default vs user algorithms
+        if is_default:
+            card_style = {
+                'marginBottom': '15px',
+                'border': f'2px solid {NORD_COLORS["aurora"][3]}',
+                'backgroundColor': NORD_COLORS['polar_night'][1]
+            }
+            badge = dbc.Badge("Default Example", color="success", className="mb-2")
+        else:
+            card_style = {
+                'marginBottom': '15px',
+                'border': f'2px solid {NORD_COLORS["frost"][2]}',
+                'backgroundColor': NORD_COLORS['polar_night'][1]
+            }
+            badge = dbc.Badge("Your Algorithm", color="primary", className="mb-2")
+
+        card_body_content = [
+            badge,
+            dbc.Row([
+                dbc.Col([
+                    html.P([html.Strong("File: "), getattr(alg, 'filename', 'N/A')]),
+                    html.P([html.Strong("Uploaded: "),
+                            getattr(alg, 'upload_time', 'Unknown').strftime('%Y-%m-%d %H:%M')
+                            if hasattr(alg, 'upload_time') and alg.upload_time else 'Unknown']),
+                    html.P([
+                        html.Strong("Status: "),
+                        html.Span(getattr(alg, 'status', 'unknown').title(), style={'color': status_color})
+                    ]),
+                    html.P([
+                        html.Strong("Tests Run: "),
+                        str(getattr(alg, 'test_count', 0))
+                    ])
+                ], width=8),
+                dbc.Col([
+                    dbc.ButtonGroup([
+                        dbc.Button("🧪 Test",
+                                   id={'type': 'test-algorithm-btn', 'index': getattr(alg, 'id', index)},
+                                   size="sm", color="success",
+                                   style={'marginBottom': '5px', 'width': '100%'}),
+                        # Only show delete button for non-default algorithms
+                        dbc.Button("🗑️ Delete",
+                                   id={'type': 'delete-algorithm-btn', 'index': getattr(alg, 'id', index)},
+                                   size="sm", color="danger",
+                                   style={'width': '100%'},
+                                   disabled=is_default) if not is_default else html.Div()
+                    ], vertical=True, style={'width': '100%'})
+                ], width=4)
+            ])
+        ]
+
+        # Add description for algorithms that have one
+        if hasattr(alg, 'description') and alg.description:
+            description_text = alg.description
+            if len(description_text) > 150:
+                description_text = description_text[:150] + "..."
+
+            card_body_content.insert(-1, html.P(
+                description_text,
+                style={'color': NORD_COLORS['snow_storm'][0], 'fontSize': '12px',
+                       'fontStyle': 'italic', 'marginTop': '10px'}
+            ))
+
+        # Add test results if available
+        if has_test_results:
+            metrics = alg.test_results.get('metrics', {})
+            execution_time = alg.test_results.get('execution_time', 0)
+
+            # Calculate composite score
+            composite_score = algorithm_executor._calculate_composite_score(metrics)
+
+            test_results_section = html.Div([
+                html.Hr(style={'borderColor': NORD_COLORS['polar_night'][3], 'margin': '10px 0'}),
+                html.H6("📊 Latest Test Results",
+                        style={'color': NORD_COLORS['snow_storm'][2], 'marginBottom': '10px'}),
+                dbc.Row([
+                    dbc.Col([
+                        html.Small(f"Accuracy: {metrics.get('accuracy', 0):.1%}",
+                                   style={'color': NORD_COLORS['aurora'][3]})
+                    ], width=4),
+                    dbc.Col([
+                        html.Small(f"MAE: {metrics.get('mae', 0):.3f}",
+                                   style={'color': NORD_COLORS['aurora'][1]})
+                    ], width=4),
+                    dbc.Col([
+                        html.Small(f"Score: {composite_score:.3f}",
+                                   style={'color': NORD_COLORS['frost'][2], 'fontWeight': 'bold'})
+                    ], width=4)
+                ]),
+                html.Small(f"Execution: {execution_time:.2f}s",
+                           style={'color': NORD_COLORS['snow_storm'][0]})
+            ])
+            card_body_content.append(test_results_section)
+
+        card = dbc.Card([
+            dbc.CardHeader([
+                html.H6(getattr(alg, 'algorithm_name', 'Unknown Algorithm'),
+                        style={'color': NORD_COLORS['snow_storm'][2], 'margin': 0})
+            ]),
+            dbc.CardBody(card_body_content)
+        ], style=card_style)
+
+        return card
+
+    except Exception as e:
+        error_card = dbc.Card([
+            dbc.CardBody([
+                html.P(f"Error displaying algorithm: {str(e)}",
+                       style={'color': NORD_COLORS['aurora'][0]})
+            ])
+        ], style={'marginBottom': '15px'})
+        return error_card
 
 
 @app.callback(
@@ -1140,7 +1360,30 @@ def update_submit_button_state(active_tab, token, refresh_trigger):
         return True, "🏆 Submit Best Algorithm to Challenge"
 
 
-# Add new callback to handle challenge submission
+# Enhanced navigation callbacks
+@app.callback(
+    Output('main-tabs', 'active_tab'),
+    [Input('goto-upload-btn', 'n_clicks'),
+     Input('goto-upload-from-myalgs-btn', 'n_clicks'),
+     Input({'type': 'test-algorithm-btn', 'index': ALL}, 'n_clicks')],
+    prevent_initial_call=True
+)
+def handle_navigation(upload_clicks, upload_from_myalgs_clicks, test_clicks):
+    ctx = callback_context
+    if not ctx.triggered:
+        return dash.no_update
+
+    trigger_id = ctx.triggered[0]['prop_id']
+
+    if 'goto-upload-btn' in trigger_id or 'goto-upload-from-myalgs-btn' in trigger_id:
+        return "upload"
+    elif 'test-algorithm-btn' in trigger_id:
+        return "test"
+
+    return dash.no_update
+
+
+# Challenge submission callback (unchanged)
 @app.callback(
     [Output('submit-to-challenge-btn', 'color'),
      Output('submit-to-challenge-btn', 'children', allow_duplicate=True)],
@@ -1193,7 +1436,8 @@ def handle_challenge_submission(n_clicks, token):
         logger.error(f"Challenge submission failed: {e}")
         return "danger", f"❌ Submission Failed"
 
-# Delete algorithm using pattern matching callback
+
+# Delete algorithm using pattern matching callback (enhanced to prevent default deletion)
 @app.callback(
     Output('algorithm-refresh-trigger', 'children'),
     [Input({'type': 'delete-algorithm-btn', 'index': ALL}, 'n_clicks')],
@@ -1213,6 +1457,7 @@ def handle_algorithm_deletion(n_clicks_list, token):
         button_info = json.loads(ctx.triggered[0]['prop_id'].split('.')[0])
         algorithm_id = button_info['index']
 
+        # The database manager will prevent deletion of default algorithms
         success = user_db.delete_algorithm(algorithm_id, token)
 
         if success:
@@ -1226,23 +1471,12 @@ def handle_algorithm_deletion(n_clicks_list, token):
         return dash.no_update
 
 
-# Navigation callback
-@app.callback(
-    Output('main-tabs', 'active_tab'),
-    [Input('goto-upload-btn', 'n_clicks')],
-    prevent_initial_call=True
-)
-def handle_navigation(upload_clicks):
-    if upload_clicks:
-        return "upload"
-    return dash.no_update
-
-
 if __name__ == '__main__':
     PORT: int = 8050
     print("🚀 Starting AVOCADO Streaming Process Mining Challenge..")
     print("=" * 60)
     print(f"📍 Open your browser to: http://localhost:{PORT}")
+    print("💡 All users now start with default example algorithms!")
     print("=" * 60)
 
     try:

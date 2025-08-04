@@ -104,7 +104,10 @@ class ConceptDriftLogGenerator:
             elif progress > self.drift_end:
                 prob_b: float = 1.0
             else:
-                prob_b = (progress - self.drift_begin) / (self.drift_end - self.drift_begin)
+                if self.drift_begin == self.drift_end:
+                    prob_b = 0.0
+                else:
+                    prob_b = (progress - self.drift_begin) / (self.drift_end - self.drift_begin)
 
             choose_b: bool = random.random() < prob_b
 
