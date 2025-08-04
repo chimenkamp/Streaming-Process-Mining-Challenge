@@ -1,5 +1,6 @@
 import inspect
 import os
+import traceback
 import zipfile
 import uuid
 import base64
@@ -16,7 +17,9 @@ import sys
 import importlib.util
 from typing import Dict, List, Any, Optional, Type
 
-from src.ui.leaderboard_system import SubmissionManager
+from dash._utils import logger
+
+from src.ui.leaderboard_system import SubmissionManager, LeaderboardManager
 from src.ui.leaderboard_ui import create_leaderboard_layout, create_leaderboard_table, create_performance_chart, \
     create_recent_activity_list
 
@@ -25,6 +28,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src', 'ui'))
 
 # Import our custom components and classes
 from src.ui.algorithm_base import BaseAlgorithm
+from src.ui.algorithm_executor import AlgorithmExecutor, ExecutionResult
+
+
 from src.ui.styles import get_nord_styles, NORD_COLORS, get_custom_css
 from src.ui.stream_manager import StreamManager
 
@@ -34,6 +40,7 @@ from src.ui.database_manager import DatabaseManager, db_manager
 from src.ui.algorithm_testing_engine import AlgorithmTestingEngine, validate_algorithm_file
 
 ENHANCED_FEATURES = True
+
 
 
 LEADERBOARD_AVAILABLE = True
@@ -87,6 +94,7 @@ os.makedirs(UPLOAD_DIRECTORY, exist_ok=True)
 
 # Use database manager
 user_db = db_manager
+algorithm_executor = AlgorithmExecutor(BaseAlgorithm, stream_manager, db_manager)
 
 
 # Utility functions
@@ -310,7 +318,7 @@ def create_test_layout():
                         className='dash-dropdown'
                     ),
                     html.Br(),
-                    html.Div(id='test-stream-description', style={'display': 'none'}),
+                    # html.Div(id='test-stream-description', style={'display': 'none'}),
                     html.Label("Number of Cases:",
                                style={'color': NORD_COLORS['snow_storm'][1], 'fontWeight': 'bold'}),
                     dcc.Slider(
@@ -797,6 +805,7 @@ def update_test_stream_description(stream_id):
 
 
 # Run algorithm test
+
 @app.callback(
     [Output('test-results-plot', 'figure'),
      Output('test-results-plot', 'style'),
@@ -816,43 +825,50 @@ def run_algorithm_test(n_clicks, selected_algorithm_id, stream_id, num_cases, to
 
     try:
         algorithm_id = int(selected_algorithm_id)
-        algorithm = user_db.get_algorithm_by_id(algorithm_id, token)
 
-        if not algorithm:
-            return {}, {'display': 'none'}, {'display': 'block'}, \
-                dbc.Alert("Algorithm not found", color="danger"), ""
+        # Show loading state
+        loading_msg = dbc.Alert("🔄 Executing algorithm... This may take a few minutes.",
+                                color="info", style={'marginTop': '15px'})
 
-        # Generate sample test results
-        import numpy as np
+        # Execute algorithm using the real executor
+        result = algorithm_executor.execute_algorithm_test(
+            algorithm_id, token, stream_id, num_cases
+        )
 
-        events = list(range(num_cases))
-        conformance_scores = [0.8 + 0.2 * np.sin(i * 0.1) + np.random.normal(0, 0.05) for i in events]
-        baseline_scores = [0.85 + 0.1 * np.sin(i * 0.08) for i in events]
+        if not result.success:
+            error_msg = dbc.Alert(f"❌ Test failed: {result.error_message}",
+                                  color="danger", style={'marginTop': '15px'})
+            return {}, {'display': 'none'}, {'display': 'block'}, error_msg, ""
 
-        conformance_scores = [max(0, min(1, score)) for score in conformance_scores]
-        baseline_scores = [max(0, min(1, score)) for score in baseline_scores]
+        # Get algorithm info for display
+        algorithm = db_manager.get_algorithm_by_id(algorithm_id, token)
+        algorithm_name = algorithm.algorithm_name if algorithm else f"Algorithm {algorithm_id}"
 
+        # Create performance plot
         fig = go.Figure()
 
+        # Add baseline line
         fig.add_trace(go.Scatter(
-            x=events,
-            y=baseline_scores,
+            x=list(range(len(result.baseline_scores))),
+            y=result.baseline_scores,
             mode='lines',
             name='Baseline',
             line=dict(color=NORD_COLORS['snow_storm'][0], dash='dash', width=1),
             opacity=0.7
         ))
 
+        # Add algorithm performance line
         fig.add_trace(go.Scatter(
-            x=events,
-            y=conformance_scores,
+            x=list(range(len(result.conformance_scores))),
+            y=result.conformance_scores,
             mode='lines',
-            name=getattr(algorithm, 'algorithm_name', 'Algorithm'),
+            name=algorithm_name,
             line=dict(color=NORD_COLORS['frost'][2], width=2)
         ))
 
+        # Update layout
         fig.update_layout(
-            title=f"Algorithm Performance: {getattr(algorithm, 'algorithm_name', 'Algorithm')} on {stream_id}",
+            title=f"Algorithm Performance: {algorithm_name} on {stream_id}",
             xaxis_title="Event Number",
             yaxis_title="Conformance Score",
             template='plotly_dark',
@@ -863,19 +879,19 @@ def run_algorithm_test(n_clicks, selected_algorithm_id, stream_id, num_cases, to
             hovermode='x unified'
         )
 
-        mae = np.mean([abs(a - b) for a, b in zip(conformance_scores, baseline_scores)])
-        rmse = np.sqrt(np.mean([(a - b) ** 2 for a, b in zip(conformance_scores, baseline_scores)]))
-        accuracy = np.mean([abs(a - b) <= 0.1 for a, b in zip(conformance_scores, baseline_scores)])
-        global_errors = sum(1 for a, b in zip(conformance_scores, baseline_scores) if abs(a - b) > 0.3)
+        # Create metrics display
+        metrics = result.metrics
+        performance_data = result.performance_data
 
         metrics_display = html.Div([
             html.H6("📊 Test Results", style={'color': NORD_COLORS['snow_storm'][2], 'marginBottom': '15px'}),
 
+            # Performance metrics row
             dbc.Row([
                 dbc.Col([
                     dbc.Card([
                         dbc.CardBody([
-                            html.H4(f"{mae:.3f}", style={'color': NORD_COLORS['aurora'][0], 'margin': 0}),
+                            html.H4(f"{metrics['mae']:.3f}", style={'color': NORD_COLORS['aurora'][0], 'margin': 0}),
                             html.P("Mean Absolute Error", style={'margin': 0, 'fontSize': '12px'})
                         ])
                     ], style={'textAlign': 'center', 'backgroundColor': NORD_COLORS['polar_night'][2]})
@@ -883,7 +899,7 @@ def run_algorithm_test(n_clicks, selected_algorithm_id, stream_id, num_cases, to
                 dbc.Col([
                     dbc.Card([
                         dbc.CardBody([
-                            html.H4(f"{rmse:.3f}", style={'color': NORD_COLORS['aurora'][1], 'margin': 0}),
+                            html.H4(f"{metrics['rmse']:.3f}", style={'color': NORD_COLORS['aurora'][1], 'margin': 0}),
                             html.P("Root Mean Square Error", style={'margin': 0, 'fontSize': '12px'})
                         ])
                     ], style={'textAlign': 'center', 'backgroundColor': NORD_COLORS['polar_night'][2]})
@@ -891,7 +907,8 @@ def run_algorithm_test(n_clicks, selected_algorithm_id, stream_id, num_cases, to
                 dbc.Col([
                     dbc.Card([
                         dbc.CardBody([
-                            html.H4(f"{accuracy:.1%}", style={'color': NORD_COLORS['aurora'][3], 'margin': 0}),
+                            html.H4(f"{metrics['accuracy']:.1%}",
+                                    style={'color': NORD_COLORS['aurora'][3], 'margin': 0}),
                             html.P("Accuracy (±0.1)", style={'margin': 0, 'fontSize': '12px'})
                         ])
                     ], style={'textAlign': 'center', 'backgroundColor': NORD_COLORS['polar_night'][2]})
@@ -899,28 +916,67 @@ def run_algorithm_test(n_clicks, selected_algorithm_id, stream_id, num_cases, to
                 dbc.Col([
                     dbc.Card([
                         dbc.CardBody([
-                            html.H4(f"{global_errors}", style={'color': NORD_COLORS['frost'][2], 'margin': 0}),
+                            html.H4(f"{metrics['global_errors']}",
+                                    style={'color': NORD_COLORS['frost'][2], 'margin': 0}),
                             html.P("Global Errors", style={'margin': 0, 'fontSize': '12px'})
                         ])
                     ], style={'textAlign': 'center', 'backgroundColor': NORD_COLORS['polar_night'][2]})
                 ], width=3)
             ], className="mb-3"),
 
+            # Performance statistics row
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H5("⚡ Performance", style={'color': NORD_COLORS['snow_storm'][2]}),
+                            html.P(f"Execution Time: {result.execution_time:.2f}s",
+                                   style={'color': NORD_COLORS['snow_storm'][1], 'margin': '5px 0'}),
+                            html.P(f"Memory Usage: {result.memory_usage_mb:.1f}MB",
+                                   style={'color': NORD_COLORS['snow_storm'][1], 'margin': '5px 0'}),
+                            html.P(
+                                f"Events/sec: {num_cases / result.execution_time:.1f}" if result.execution_time > 0 else "Events/sec: N/A",
+                                style={'color': NORD_COLORS['snow_storm'][1], 'margin': '5px 0'}),
+                        ])
+                    ], style={'backgroundColor': NORD_COLORS['polar_night'][2]})
+                ], width=6),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H5("📈 Quality", style={'color': NORD_COLORS['snow_storm'][2]}),
+                            html.P(f"Correlation: {metrics['correlation']:.3f}",
+                                   style={'color': NORD_COLORS['snow_storm'][1], 'margin': '5px 0'}),
+                            html.P(f"Mean Score: {metrics['mean_conformance']:.3f}",
+                                   style={'color': NORD_COLORS['snow_storm'][1], 'margin': '5px 0'}),
+                            html.P(f"Score Range: {metrics['min_conformance']:.3f} - {metrics['max_conformance']:.3f}",
+                                   style={'color': NORD_COLORS['snow_storm'][1], 'margin': '5px 0'}),
+                        ])
+                    ], style={'backgroundColor': NORD_COLORS['polar_night'][2]})
+                ], width=6)
+            ], className="mb-3"),
+
             dbc.Alert(f"✅ Test completed successfully on {num_cases} cases",
                       color="success", style={'marginTop': '15px'})
         ])
 
+        # Update algorithm test results in database
         test_results = {
-            'algorithm_id': algorithm_id,
             'stream_id': stream_id,
             'num_cases': num_cases,
-            'mae': mae,
-            'rmse': rmse,
-            'accuracy': accuracy,
-            'global_errors': global_errors,
-            'conformance_scores': conformance_scores,
-            'baseline_scores': baseline_scores
+            'metrics': metrics,
+            'execution_time': result.execution_time,
+            'memory_usage_mb': result.memory_usage_mb,
+            'timestamp': datetime.now().isoformat()
         }
+
+        # Store results in algorithm record
+        try:
+            # Update algorithm with test results
+            db_manager.update_algorithm_test_results(algorithm_id, token, test_results)
+            logger.info(f"Test results saved for algorithm {algorithm_id}")
+        except Exception as e:
+            logger.warning(f"Failed to save test results: {e}")
+            # Continue anyway - test was successful even if saving failed
 
         return (
             fig,
@@ -932,8 +988,10 @@ def run_algorithm_test(n_clicks, selected_algorithm_id, stream_id, num_cases, to
 
     except Exception as e:
         error_msg = f"Test execution failed: {str(e)}"
-        return {}, {'display': 'none'}, {'display': 'block'}, \
-            dbc.Alert(error_msg, color="danger"), ""
+        logger.error(f"{error_msg}\n{traceback.format_exc()}")
+
+        error_display = dbc.Alert(error_msg, color="danger")
+        return {}, {'display': 'none'}, {'display': 'block'}, error_display, ""
 
 
 # Display user algorithms using pattern matching for delete buttons
@@ -952,7 +1010,7 @@ def display_user_algorithms(active_tab, token, refresh_trigger):
         return html.P("Loading...", style={'color': NORD_COLORS['snow_storm'][0]})
 
     try:
-        algorithms = user_db.get_user_algorithms(token)
+        algorithms = db_manager.get_user_algorithms(token)
     except Exception as e:
         return dbc.Alert(f"Error loading algorithms: {str(e)}", color="danger")
 
@@ -973,36 +1031,73 @@ def display_user_algorithms(active_tab, token, refresh_trigger):
                 'error': NORD_COLORS['aurora'][0]
             }.get(getattr(alg, 'status', 'uploaded'), NORD_COLORS['snow_storm'][1])
 
+            # Determine if algorithm has test results
+            has_test_results = (hasattr(alg, 'test_results') and alg.test_results and
+                                isinstance(alg.test_results, dict))
+
+            card_body_content = [
+                dbc.Row([
+                    dbc.Col([
+                        html.P([html.Strong("File: "), getattr(alg, 'filename', 'N/A')]),
+                        html.P([html.Strong("Uploaded: "),
+                                getattr(alg, 'upload_time', 'Unknown').strftime('%Y-%m-%d %H:%M')
+                                if hasattr(alg, 'upload_time') and alg.upload_time else 'Unknown']),
+                        html.P([
+                            html.Strong("Status: "),
+                            html.Span(getattr(alg, 'status', 'unknown').title(), style={'color': status_color})
+                        ]),
+                        html.P([
+                            html.Strong("Tests Run: "),
+                            str(getattr(alg, 'test_count', 0))
+                        ])
+                    ], width=8),
+                    dbc.Col([
+                        dbc.ButtonGroup([
+                            dbc.Button("🗑️ Delete",
+                                       id={'type': 'delete-algorithm-btn', 'index': getattr(alg, 'id', i)},
+                                       size="sm", color="danger")
+                        ], vertical=True, style={'width': '100%'})
+                    ], width=4)
+                ])
+            ]
+
+            # Add test results if available
+            if has_test_results:
+                metrics = alg.test_results.get('metrics', {})
+                execution_time = alg.test_results.get('execution_time', 0)
+
+                # Calculate composite score
+                composite_score = algorithm_executor._calculate_composite_score(metrics)
+
+                test_results_section = html.Div([
+                    html.Hr(style={'borderColor': NORD_COLORS['polar_night'][3], 'margin': '10px 0'}),
+                    html.H6("📊 Latest Test Results",
+                            style={'color': NORD_COLORS['snow_storm'][2], 'marginBottom': '10px'}),
+                    dbc.Row([
+                        dbc.Col([
+                            html.Small(f"Accuracy: {metrics.get('accuracy', 0):.1%}",
+                                       style={'color': NORD_COLORS['aurora'][3]})
+                        ], width=4),
+                        dbc.Col([
+                            html.Small(f"MAE: {metrics.get('mae', 0):.3f}",
+                                       style={'color': NORD_COLORS['aurora'][1]})
+                        ], width=4),
+                        dbc.Col([
+                            html.Small(f"Score: {composite_score:.3f}",
+                                       style={'color': NORD_COLORS['frost'][2], 'fontWeight': 'bold'})
+                        ], width=4)
+                    ]),
+                    html.Small(f"Execution: {execution_time:.2f}s",
+                               style={'color': NORD_COLORS['snow_storm'][0]})
+                ])
+                card_body_content.append(test_results_section)
+
             card = dbc.Card([
                 dbc.CardHeader([
                     html.H6(getattr(alg, 'algorithm_name', 'Unknown Algorithm'),
                             style={'color': NORD_COLORS['snow_storm'][2], 'margin': 0})
                 ]),
-                dbc.CardBody([
-                    dbc.Row([
-                        dbc.Col([
-                            html.P([html.Strong("File: "), getattr(alg, 'filename', 'N/A')]),
-                            html.P([html.Strong("Uploaded: "),
-                                    getattr(alg, 'upload_time', 'Unknown').strftime('%Y-%m-%d %H:%M')
-                                    if hasattr(alg, 'upload_time') and alg.upload_time else 'Unknown']),
-                            html.P([
-                                html.Strong("Status: "),
-                                html.Span(getattr(alg, 'status', 'unknown').title(), style={'color': status_color})
-                            ]),
-                            html.P([
-                                html.Strong("Tests Run: "),
-                                str(getattr(alg, 'test_count', 0))
-                            ])
-                        ], width=8),
-                        dbc.Col([
-                            dbc.ButtonGroup([
-                                dbc.Button("🗑️ Delete",
-                                           id={'type': 'delete-algorithm-btn', 'index': getattr(alg, 'id', i)},
-                                           size="sm", color="danger")
-                            ], vertical=True, style={'width': '100%'})
-                        ], width=4)
-                    ])
-                ])
+                dbc.CardBody(card_body_content)
             ], style={'marginBottom': '15px'})
 
             algorithm_cards.append(card)
@@ -1018,6 +1113,85 @@ def display_user_algorithms(active_tab, token, refresh_trigger):
 
     return html.Div(algorithm_cards)
 
+
+@app.callback(
+    [Output('submit-to-challenge-btn', 'disabled'),
+     Output('submit-to-challenge-btn', 'children')],
+    [Input('main-tabs', 'active_tab'),
+     Input('user-token-store', 'children'),
+     Input('algorithm-refresh-trigger', 'children')],
+    prevent_initial_call=False
+)
+def update_submit_button_state(active_tab, token, refresh_trigger):
+    if active_tab != "my-algorithms" or not token:
+        return True, "🏆 Submit Best Algorithm to Challenge"
+
+    try:
+        # Get best algorithm for user
+        best_algorithm = algorithm_executor.get_best_algorithm_for_user(token)
+
+        if best_algorithm:
+            return False, f"🏆 Submit '{best_algorithm['name']}' (Score: {best_algorithm['score']:.3f})"
+        else:
+            return True, "🏆 No Tested Algorithms Available"
+
+    except Exception as e:
+        logger.error(f"Error checking best algorithm: {e}")
+        return True, "🏆 Submit Best Algorithm to Challenge"
+
+
+# Add new callback to handle challenge submission
+@app.callback(
+    [Output('submit-to-challenge-btn', 'color'),
+     Output('submit-to-challenge-btn', 'children', allow_duplicate=True)],
+    [Input('submit-to-challenge-btn', 'n_clicks')],
+    [State('user-token-store', 'children')],
+    prevent_initial_call=True
+)
+def handle_challenge_submission(n_clicks, token):
+    if not n_clicks or not token:
+        return "primary", "🏆 Submit Best Algorithm to Challenge"
+
+    try:
+        # Get user info and best algorithm
+        user_stats = db_manager.get_user_statistics(token)
+        best_algorithm_info = algorithm_executor.get_best_algorithm_for_user(token)
+
+        if not best_algorithm_info:
+            return "danger", "❌ No Algorithm Available"
+
+        # Get full algorithm details
+        algorithm = db_manager.get_algorithm_by_id(best_algorithm_info['id'], token)
+        if not algorithm:
+            return "danger", "❌ Algorithm Not Found"
+
+        if LEADERBOARD_AVAILABLE and submission_manager:
+            # Submit to leaderboard using existing submission_manager
+            submission_id = submission_manager.submit_algorithm(
+                team_name=user_stats.get('email', 'Anonymous'),  # Use email as team name
+                email=user_stats.get('email', ''),
+                algorithm_name=algorithm.algorithm_name,
+                description=algorithm.description or "No description provided",
+                file_path=algorithm.file_path,
+                libraries=algorithm.required_libraries or []
+            )
+
+            # Start async evaluation if available
+            if hasattr(submission_manager, 'evaluate_submission_async'):
+                success = submission_manager.evaluate_submission_async(submission_id)
+                if success:
+                    return "success", "✅ Submitted Successfully!"
+                else:
+                    return "warning", "⚠️ Submitted (Evaluation Pending)"
+            else:
+                return "success", "✅ Submitted to Challenge!"
+        else:
+            # Leaderboard not available - just mark as submitted locally
+            return "info", "ℹ️ Submitted (Local Mode)"
+
+    except Exception as e:
+        logger.error(f"Challenge submission failed: {e}")
+        return "danger", f"❌ Submission Failed"
 
 # Delete algorithm using pattern matching callback
 @app.callback(
@@ -1072,7 +1246,7 @@ if __name__ == '__main__':
     print("=" * 60)
 
     try:
-        app.run_server(debug=True, host='0.0.0.0', port=PORT)
+        app.run_server(debug=False, host='0.0.0.0', port=PORT)
     except KeyboardInterrupt:
         print("\n👋 Shutting down gracefully...")
     except Exception as e:

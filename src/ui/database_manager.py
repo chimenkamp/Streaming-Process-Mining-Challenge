@@ -542,7 +542,169 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"Error getting user statistics: {e}")
             return {}
-    
+
+    def update_algorithm_test_results(self, algorithm_id: int, token: str,
+                                      test_results: Dict[str, Any]) -> bool:
+        """Update algorithm with test results."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute("PRAGMA foreign_keys = ON")
+
+                # Verify ownership
+                cursor = conn.execute("SELECT id FROM algorithms WHERE id = ? AND token = ?",
+                                      (algorithm_id, token))
+                if not cursor.fetchone():
+                    logger.warning(f"Algorithm not found or unauthorized: {algorithm_id}")
+                    return False
+
+                # Update algorithm with test results
+                conn.execute("""
+                             UPDATE algorithms
+                             SET status       = 'tested',
+                                 last_tested  = ?,
+                                 test_results = ?,
+                                 test_count   = test_count + 1,
+                                 updated_at   = ?
+                             WHERE id = ?
+                               AND token = ?
+                             """, (
+                                 datetime.now().isoformat(),
+                                 json.dumps(test_results),
+                                 datetime.now().isoformat(),
+                                 algorithm_id,
+                                 token
+                             ))
+
+                # Update user test count
+                conn.execute("""
+                             UPDATE users
+                             SET total_tests = total_tests + 1,
+                                 last_active = ?
+                             WHERE token = ?
+                             """, (datetime.now().isoformat(), token))
+
+                logger.info(f"Test results updated for algorithm {algorithm_id}")
+                return True
+
+        except Exception as e:
+            logger.error(f"Error updating test results: {e}")
+            return False
+
+    def get_user_best_algorithm(self, token: str) -> Optional[Algorithm]:
+        """Get user's best performing algorithm based on composite score."""
+        try:
+            algorithms = self.get_user_algorithms(token)
+
+            best_algorithm = None
+            best_score = -1.0
+
+            for alg in algorithms:
+                if alg.test_results and alg.status == 'tested':
+                    metrics = alg.test_results.get('metrics', {})
+
+                    # Calculate composite score (same logic as in AlgorithmExecutor)
+                    score = self._calculate_composite_score_db(metrics)
+
+                    if score > best_score:
+                        best_score = score
+                        best_algorithm = alg
+
+            return best_algorithm
+
+        except Exception as e:
+            logger.error(f"Error getting best algorithm: {e}")
+            return None
+
+    def _calculate_composite_score_db(self, metrics: Dict[str, float]) -> float:
+        """Calculate composite score for database operations."""
+        weights = {
+            'accuracy': 0.30,
+            'mae': 0.25,
+            'rmse': 0.20,
+            'correlation': 0.15,
+            'global_errors': 0.10
+        }
+
+        score = 0.0
+
+        # Accuracy (higher is better)
+        if 'accuracy' in metrics:
+            score += metrics['accuracy'] * weights['accuracy']
+
+        # MAE (lower is better)
+        if 'mae' in metrics:
+            mae_score = 1.0 / (1.0 + metrics['mae'])
+            score += mae_score * weights['mae']
+
+        # RMSE (lower is better)
+        if 'rmse' in metrics:
+            rmse_score = 1.0 / (1.0 + metrics['rmse'])
+            score += rmse_score * weights['rmse']
+
+        # Correlation (higher is better)
+        if 'correlation' in metrics:
+            score += max(0, metrics['correlation']) * weights['correlation']
+
+        # Global errors (lower is better)
+        if 'global_errors' in metrics:
+            error_score = 1.0 / (1.0 + metrics['global_errors'])
+            score += error_score * weights['global_errors']
+
+        return score
+
+    def get_algorithm_performance_summary(self, token: str) -> Dict[str, Any]:
+        """Get performance summary for user's algorithms."""
+        try:
+            algorithms = self.get_user_algorithms(token)
+
+            total_algorithms = len(algorithms)
+            tested_algorithms = len([alg for alg in algorithms if alg.status == 'tested'])
+
+            if tested_algorithms == 0:
+                return {
+                    'total_algorithms': total_algorithms,
+                    'tested_algorithms': 0,
+                    'best_score': 0.0,
+                    'avg_score': 0.0,
+                    'performance_trend': []
+                }
+
+            scores = []
+            performance_trend = []
+
+            for alg in algorithms:
+                if alg.test_results and alg.status == 'tested':
+                    metrics = alg.test_results.get('metrics', {})
+                    score = self._calculate_composite_score_db(metrics)
+                    scores.append(score)
+
+                    performance_trend.append({
+                        'algorithm_name': alg.algorithm_name,
+                        'score': score,
+                        'test_date': alg.last_tested.isoformat() if alg.last_tested else None
+                    })
+
+            # Sort by test date
+            performance_trend.sort(key=lambda x: x['test_date'] or '')
+
+            return {
+                'total_algorithms': total_algorithms,
+                'tested_algorithms': tested_algorithms,
+                'best_score': max(scores) if scores else 0.0,
+                'avg_score': sum(scores) / len(scores) if scores else 0.0,
+                'performance_trend': performance_trend
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting performance summary: {e}")
+            return {
+                'total_algorithms': 0,
+                'tested_algorithms': 0,
+                'best_score': 0.0,
+                'avg_score': 0.0,
+                'performance_trend': []
+            }
+
     def cleanup_old_data(self, days_old: int = 30) -> Dict[str, int]:
         """Clean up old test sessions and inactive users."""
         cleanup_stats = {'test_sessions': 0, 'inactive_users': 0}
