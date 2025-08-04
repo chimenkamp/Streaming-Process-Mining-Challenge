@@ -1,42 +1,36 @@
-import inspect
 import os
-import traceback
-import zipfile
-import uuid
 import base64
-import sqlite3
 import json
-from datetime import datetime, timedelta
+import os
+import sys
+import traceback
+import uuid
+import zipfile
+from datetime import datetime
+from typing import Optional
 
 import dash
-from dash import dcc, html, Input, Output, State, callback_context, clientside_callback, ClientsideFunction, ALL
 import dash_bootstrap_components as dbc
 import plotly.graph_objs as go
-import pandas as pd
-import sys
-import importlib.util
-from typing import Dict, List, Any, Optional, Type
-
+from dash import dcc, html, Input, Output, State, callback_context, ALL
 from dash._utils import logger
 
-from src.ui.leaderboard_system import SubmissionManager, LeaderboardManager
-from src.ui.leaderboard_ui import create_leaderboard_layout, create_leaderboard_table, create_performance_chart, \
-    create_recent_activity_list
+from src.ui.leaderboard_system import SubmissionManager
+from src.ui.leaderboard_ui import create_leaderboard_layout
 
 # Add the src directory to the path so we can import our modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src', 'ui'))
 
 # Import our custom components and classes
 from src.ui.algorithm_base import BaseAlgorithm
-from src.ui.algorithm_executor import AlgorithmExecutor, ExecutionResult
+from src.ui.algorithm_executor import AlgorithmExecutor
 
 from src.ui.styles import get_nord_styles, NORD_COLORS, get_custom_css
 from src.ui.stream_manager import StreamManager
 
 # Import enhanced components (create simplified versions if files don't exist)
 
-from src.ui.database_manager import DatabaseManager, db_manager
-from src.ui.algorithm_testing_engine import AlgorithmTestingEngine, validate_algorithm_file
+from src.ui.database_manager import db_manager
 
 ENHANCED_FEATURES = True
 
@@ -1470,6 +1464,183 @@ def handle_algorithm_deletion(n_clicks_list, token):
         print(f"Error deleting algorithm: {e}")
         return dash.no_update
 
+
+@app.callback(
+    [Output('leaderboard-table', 'children'),
+     Output('total-submissions-stat', 'children'),
+     Output('unique-teams-stat', 'children'),
+     Output('completed-submissions-stat', 'children'),
+     Output('completion-rate-stat', 'children'),
+     Output('recent-submissions-stat', 'children'),
+     Output('performance-distribution-chart', 'figure'),
+     Output('recent-activity-list', 'children')],
+    [Input('leaderboard-refresh-interval', 'n_intervals'),
+     Input('refresh-leaderboard-btn', 'n_clicks')],
+    prevent_initial_call=False
+)
+def update_leaderboard_data(n_intervals, refresh_clicks):
+    """Update all leaderboard components with fresh data."""
+    try:
+        if not LEADERBOARD_AVAILABLE or not submission_manager:
+            # Return empty/placeholder data if leaderboard not available
+            empty_table = html.Div([
+                html.P("Leaderboard system not available",
+                       style={'text-align': 'center', 'color': NORD_COLORS['snow_storm'][0], 'padding': '50px'})
+            ])
+            empty_fig = go.Figure()
+            empty_fig.add_annotation(
+                text="No data available",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, xanchor='center', yanchor='middle',
+                showarrow=False,
+                font=dict(color=NORD_COLORS['snow_storm'][0], size=14)
+            )
+            empty_fig.update_layout(
+                template='plotly_dark',
+                paper_bgcolor=NORD_COLORS['polar_night'][1],
+                plot_bgcolor=NORD_COLORS['polar_night'][1],
+                font=dict(color=NORD_COLORS['snow_storm'][2])
+            )
+
+            return (empty_table, "0", "0", "0", "0%", "0", empty_fig,
+                    html.P("No activity", style={'text-align': 'center', 'color': NORD_COLORS['snow_storm'][0]}))
+
+        # Get leaderboard data
+        leaderboard_data = submission_manager.leaderboard_manager.get_leaderboard(limit=50)
+
+        # Get statistics
+        stats = submission_manager.leaderboard_manager.get_leaderboard_stats()
+
+        # Get recent submissions for activity feed
+        recent_submissions = submission_manager.database.get_submissions(limit=20)
+
+        # Create leaderboard table
+        from src.ui.leaderboard_ui import create_leaderboard_table
+        leaderboard_table = create_leaderboard_table(leaderboard_data, NORD_COLORS)
+
+        # Create performance chart
+        from src.ui.leaderboard_ui import create_performance_chart
+        performance_chart = create_performance_chart(leaderboard_data, NORD_COLORS)
+
+        # Create recent activity list
+        recent_submissions_data = []
+        for submission in recent_submissions:
+            recent_submissions_data.append({
+                'team_name': submission.team_name,
+                'algorithm_name': submission.algorithm_name,
+                'submission_time': submission.submission_time,
+                'status': submission.status
+            })
+
+        from src.ui.leaderboard_ui import create_recent_activity_list
+        activity_list = create_recent_activity_list(recent_submissions_data, NORD_COLORS)
+
+        # Format statistics
+        total_submissions = str(stats.get('total_submissions', 0))
+        unique_teams = str(stats.get('unique_teams', 0))
+        completed_submissions = str(stats.get('completed_submissions', 0))
+        completion_rate = f"{stats.get('completion_rate', 0.0):.1%}"
+        recent_submissions_count = str(stats.get('recent_submissions', 0))
+
+        return (leaderboard_table, total_submissions, unique_teams, completed_submissions,
+                completion_rate, recent_submissions_count, performance_chart, activity_list)
+
+    except Exception as e:
+        logger.error(f"Error updating leaderboard: {e}")
+        traceback.print_exc()
+
+        # Return error state
+        error_msg = f"Error loading leaderboard: {str(e)}"
+        error_div = html.Div([
+            html.P(error_msg, style={'color': NORD_COLORS['aurora'][0], 'text-align': 'center', 'padding': '20px'})
+        ])
+
+        empty_fig = go.Figure()
+        empty_fig.add_annotation(
+            text="Error loading data",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, xanchor='center', yanchor='middle',
+            showarrow=False,
+            font=dict(color=NORD_COLORS['aurora'][0], size=14)
+        )
+        empty_fig.update_layout(
+            template='plotly_dark',
+            paper_bgcolor=NORD_COLORS['polar_night'][1],
+            plot_bgcolor=NORD_COLORS['polar_night'][1],
+            font=dict(color=NORD_COLORS['snow_storm'][2])
+        )
+
+        return (error_div, "0", "0", "0", "0%", "0", empty_fig, error_div)
+
+
+# Optional: Submission details modal callback
+@app.callback(
+    [Output('submission-details-modal', 'is_open'),
+     Output('submission-details-content', 'children'),
+     Output('submission-modal-title', 'children')],
+    [Input({'type': 'view-details-btn', 'submission_id': dash.dependencies.ALL}, 'n_clicks')],
+    [State('submission-details-modal', 'is_open')],
+    prevent_initial_call=True
+)
+def toggle_submission_modal(n_clicks_list, is_open):
+    """Handle submission details modal."""
+    if not any(n_clicks_list) or not LEADERBOARD_AVAILABLE:
+        return False, "", "Submission Details"
+
+    # Get which button was clicked
+    ctx = callback_context
+    if not ctx.triggered:
+        return False, "", "Submission Details"
+
+    try:
+        # Extract submission ID from triggered component
+        button_info = ctx.triggered[0]['prop_id']
+        # Parse the submission_id from the button prop_id
+        import re
+        match = re.search(r'"submission_id":"([^"]+)"', button_info)
+        if not match:
+            return False, "", "Submission Details"
+
+        submission_id = match.group(1)
+
+        # Get submission data
+        submission = submission_manager.database.get_submission(submission_id)
+        if not submission:
+            return False, "", "Submission Details"
+
+        # Create modal content
+        from src.ui.leaderboard_ui import create_submission_details_modal_content
+
+        submission_data = {
+            'team_name': submission.team_name,
+            'algorithm_name': submission.algorithm_name,
+            'submission_time': submission.submission_time.strftime('%Y-%m-%d %H:%M:%S'),
+            'status': submission.status,
+            'description': submission.description,
+            'leaderboard_scores': submission.leaderboard_scores
+        }
+
+        modal_content = create_submission_details_modal_content(submission_data, NORD_COLORS)
+        modal_title = f"Details: {submission.algorithm_name}"
+
+        return True, modal_content, modal_title
+
+    except Exception as e:
+        logger.error(f"Error opening submission modal: {e}")
+        return False, f"Error: {str(e)}", "Error"
+
+
+# Modal close callback
+@app.callback(
+    Output('submission-details-modal', 'is_open', allow_duplicate=True),
+    [Input('close-submission-modal', 'n_clicks')],
+    prevent_initial_call=True
+)
+def close_submission_modal(n_clicks):
+    """Close submission details modal."""
+    if n_clicks:
+        return False
+    return dash.no_update
 
 if __name__ == '__main__':
     PORT: int = 8050
