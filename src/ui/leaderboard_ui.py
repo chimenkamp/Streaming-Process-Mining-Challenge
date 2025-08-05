@@ -164,7 +164,7 @@ def create_leaderboard_layout(nord_colors):
 
 
 def create_leaderboard_table(leaderboard_data: List[Dict], nord_colors) -> html.Div:
-    """Create the leaderboard table component."""
+    """Create the leaderboard table component with fixed score display."""
     if not leaderboard_data:
         return html.Div([
             html.P("No submissions available yet.",
@@ -174,16 +174,19 @@ def create_leaderboard_table(leaderboard_data: List[Dict], nord_colors) -> html.
     # Create table rows
     table_rows = []
 
-    # Header row
+    # Header row - Updated to match new score structure
     header_row = html.Tr([
         html.Th("Rank", style={'color': nord_colors['snow_storm'][2], 'text-align': 'center', 'width': '60px'}),
-        html.Th("Team", style={'color': nord_colors['snow_storm'][2], 'width': '200px'}),
-        html.Th("Algorithm", style={'color': nord_colors['snow_storm'][2], 'width': '200px'}),
+        html.Th("Team", style={'color': nord_colors['snow_storm'][2], 'width': '180px'}),
+        html.Th("Algorithm", style={'color': nord_colors['snow_storm'][2], 'width': '180px'}),
         html.Th("Score", style={'color': nord_colors['snow_storm'][2], 'text-align': 'center', 'width': '80px'}),
-        html.Th("Accuracy", style={'color': nord_colors['snow_storm'][2], 'text-align': 'center', 'width': '80px'}),
-        html.Th("Speed", style={'color': nord_colors['snow_storm'][2], 'text-align': 'center', 'width': '80px'}),
-        html.Th("Submitted", style={'color': nord_colors['snow_storm'][2], 'text-align': 'center', 'width': '120px'}),
-        html.Th("", style={'width': '80px'})  # Actions column
+        html.Th("Accuracy", style={'color': nord_colors['snow_storm'][2], 'text-align': 'center', 'width': '70px'}),
+        html.Th("MAE", style={'color': nord_colors['snow_storm'][2], 'text-align': 'center', 'width': '70px'}),
+        html.Th("RMSE", style={'color': nord_colors['snow_storm'][2], 'text-align': 'center', 'width': '70px'}),
+        html.Th("Latency", style={'color': nord_colors['snow_storm'][2], 'text-align': 'center', 'width': '70px'}),
+        html.Th("Robust", style={'color': nord_colors['snow_storm'][2], 'text-align': 'center', 'width': '70px'}),
+        html.Th("Submitted", style={'color': nord_colors['snow_storm'][2], 'text-align': 'center', 'width': '100px'}),
+        html.Th("", style={'width': '60px'})  # Actions column
     ], style={'background-color': nord_colors['polar_night'][2]})
 
     table_rows.append(header_row)
@@ -217,15 +220,24 @@ def create_leaderboard_table(leaderboard_data: List[Dict], nord_colors) -> html.
             html.Td(entry['algorithm_name'], style={'color': nord_colors['snow_storm'][1]}),
             html.Td(f"{entry['composite_score']:.3f}",
                     style={'text-align': 'center', 'font-weight': 'bold', 'color': nord_colors['frost'][2]}),
-            html.Td(f"{entry['accuracy_score']:.1%}",
+            html.Td(f"{entry['accuracy_score']:.2f}",
                     style={'text-align': 'center', 'color': nord_colors['aurora'][3]}),
-            html.Td(f"{entry['speed_score']:.3f}", style={'text-align': 'center', 'color': nord_colors['aurora'][1]}),
+            html.Td(f"{entry['mae_score']:.2f}",
+                    style={'text-align': 'center', 'color': nord_colors['aurora'][1]}),
+            html.Td(f"{entry['rmse_score']:.2f}",
+                    style={'text-align': 'center', 'color': nord_colors['aurora'][1]}),
+            html.Td(f"{entry.get('latency_score', 0.0):.2f}",  # Fixed: use latency_score instead of speed_score
+                    style={'text-align': 'center', 'color': nord_colors['aurora'][2]}),
+            html.Td(f"{entry['robustness_score']:.2f}",
+                    style={'text-align': 'center', 'color': nord_colors['aurora'][3]}),
             html.Td(entry['submission_time'].strftime('%m/%d %H:%M'),
-                    style={'text-align': 'center', 'color': nord_colors['snow_storm'][0], 'font-size': '12px'}),
+                    style={'text-align': 'center', 'color': nord_colors['snow_storm'][0], 'font-size': '11px'}),
             html.Td([
-                dbc.Button("📊", id=f"view-details-{entry['submission_id']}", size="sm",
-                           color="outline-primary",
-                           style={'border-color': nord_colors['frost'][2], 'color': nord_colors['frost'][2]})
+                dbc.Button("📊",
+                          id={'type': 'view-details-btn', 'submission_id': entry['submission_id']},
+                          size="sm",
+                          color="outline-primary",
+                          style={'border-color': nord_colors['frost'][2], 'color': nord_colors['frost'][2]})
             ], style={'text-align': 'center'})
         ], style={'background-color': row_bg}, id=f"leaderboard-row-{entry['submission_id']}")
 
@@ -337,7 +349,7 @@ def create_recent_activity_list(recent_submissions: List[Dict], nord_colors) -> 
 
 
 def create_submission_details_modal_content(submission_data: Dict, nord_colors) -> html.Div:
-    """Create detailed submission modal content."""
+    """Create detailed submission modal content with fixed score display."""
     if not submission_data:
         return html.Div("No data available")
 
@@ -356,7 +368,7 @@ def create_submission_details_modal_content(submission_data: Dict, nord_colors) 
         ])
     ], style={'margin-bottom': '20px'})
 
-    # Performance metrics section
+    # Performance metrics section - Fixed to use correct score names
     if submission_data.get('leaderboard_scores'):
         scores = submission_data['leaderboard_scores']
 
@@ -364,58 +376,110 @@ def create_submission_details_modal_content(submission_data: Dict, nord_colors) 
             dbc.Col([
                 dbc.Card([
                     dbc.CardBody([
-                        html.H4(f"{scores.get('composite_score', 0):.3f}", style={'color': nord_colors['frost'][2]}),
-                        html.P("Composite Score", style={'margin': 0})
+                        html.H4(f"{scores.get('composite_score', 0):.3f}",
+                               style={'color': nord_colors['frost'][2]}),
+                        html.P("Composite Score", style={'margin': 0, 'font-size': '12px'})
                     ])
                 ], style={'text-align': 'center'})
             ], width=2),
             dbc.Col([
                 dbc.Card([
                     dbc.CardBody([
-                        html.H4(f"{scores.get('accuracy_score', 0):.1%}", style={'color': nord_colors['aurora'][3]}),
-                        html.P("Accuracy", style={'margin': 0})
+                        html.H4(f"{scores.get('accuracy_score', 0):.2f}",
+                               style={'color': nord_colors['aurora'][3]}),
+                        html.P("Accuracy", style={'margin': 0, 'font-size': '12px'})
                     ])
                 ], style={'text-align': 'center'})
             ], width=2),
             dbc.Col([
                 dbc.Card([
                     dbc.CardBody([
-                        html.H4(f"{scores.get('mae_score', 0):.3f}", style={'color': nord_colors['aurora'][1]}),
-                        html.P("MAE Score", style={'margin': 0})
+                        html.H4(f"{scores.get('mae_score', 0):.3f}",
+                               style={'color': nord_colors['aurora'][1]}),
+                        html.P("MAE Score", style={'margin': 0, 'font-size': '12px'})
                     ])
                 ], style={'text-align': 'center'})
             ], width=2),
             dbc.Col([
                 dbc.Card([
                     dbc.CardBody([
-                        html.H4(f"{scores.get('speed_score', 0):.3f}", style={'color': nord_colors['aurora'][2]}),
-                        html.P("Speed Score", style={'margin': 0})
+                        html.H4(f"{scores.get('rmse_score', 0):.3f}",
+                               style={'color': nord_colors['aurora'][1]}),
+                        html.P("RMSE Score", style={'margin': 0, 'font-size': '12px'})
                     ])
                 ], style={'text-align': 'center'})
             ], width=2),
             dbc.Col([
                 dbc.Card([
                     dbc.CardBody([
-                        html.H4(f"{scores.get('robustness_score', 0):.3f}", style={'color': nord_colors['frost'][1]}),
-                        html.P("Robustness", style={'margin': 0})
+                        html.H4(f"{scores.get('latency_score', 0):.3f}",
+                               style={'color': nord_colors['aurora'][2]}),
+                        html.P("Latency Score", style={'margin': 0, 'font-size': '12px'})
+                    ])
+                ], style={'text-align': 'center'})
+            ], width=2),
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        html.H4(f"{scores.get('robustness_score', 0):.3f}",
+                               style={'color': nord_colors['aurora'][3]}),
+                        html.P("Robustness", style={'margin': 0, 'font-size': '12px'})
                     ])
                 ], style={'text-align': 'center'})
             ], width=2)
         ], className="mb-4")
 
+        # Score breakdown explanation
+        breakdown_info = dbc.Card([
+            dbc.CardHeader("📈 Score Breakdown"),
+            dbc.CardBody([
+                html.P("Final Score Formula:", style={'font-weight': 'bold'}),
+                html.P("Score = (0.3 × Accuracy) + (0.25 × MAE) + (0.2 × RMSE) + (0.15 × Latency) + (0.1 × Robustness)"),
+                html.Hr(),
+                html.P("Score Components:", style={'font-weight': 'bold', 'margin-top': '15px'}),
+                html.Ul([
+                    html.Li(f"Accuracy: {scores.get('accuracy_score', 0):.3f} × 0.30 = {scores.get('accuracy_score', 0) * 0.30:.3f}"),
+                    html.Li(f"MAE: {scores.get('mae_score', 0):.3f} × 0.25 = {scores.get('mae_score', 0) * 0.25:.3f}"),
+                    html.Li(f"RMSE: {scores.get('rmse_score', 0):.3f} × 0.20 = {scores.get('rmse_score', 0) * 0.20:.3f}"),
+                    html.Li(f"Latency: {scores.get('latency_score', 0):.3f} × 0.15 = {scores.get('latency_score', 0) * 0.15:.3f}"),
+                    html.Li(f"Robustness: {scores.get('robustness_score', 0):.3f} × 0.10 = {scores.get('robustness_score', 0) * 0.10:.3f}")
+                ]),
+                html.P([
+                    html.Strong("Total: "),
+                    f"{scores.get('composite_score', 0):.3f}"
+                ], style={'margin-top': '10px', 'font-size': '16px'})
+            ])
+        ], style={'margin-bottom': '20px'})
+
+        performance_section = html.Div([
+            dbc.Card([
+                dbc.CardHeader("📊 Performance Metrics"),
+                dbc.CardBody([metrics_cards])
+            ], style={'margin-bottom': '20px'}),
+            breakdown_info
+        ])
+    else:
         performance_section = dbc.Card([
             dbc.CardHeader("📊 Performance Metrics"),
-            dbc.CardBody([metrics_cards])
+            dbc.CardBody([
+                html.P("No performance metrics available. The submission may not have completed evaluation.",
+                      style={'color': nord_colors['aurora'][0]})
+            ])
         ], style={'margin-bottom': '20px'})
-    else:
-        performance_section = html.Div()
 
     # Evaluation details section
     eval_details = dbc.Card([
         dbc.CardHeader("🔬 Evaluation Details"),
         dbc.CardBody([
-            html.P("Detailed evaluation results would be displayed here."),
-            html.P("This could include per-stream performance, error analysis, etc.")
+            html.P("This submission was evaluated across multiple test streams and case counts."),
+            html.P("The scores above represent normalized metrics where higher values indicate better performance."),
+            html.Ul([
+                html.Li("Accuracy: Percentage of predictions within 0.1 of baseline"),
+                html.Li("MAE Score: Normalized Mean Absolute Error (higher = lower error)"),
+                html.Li("RMSE Score: Normalized Root Mean Square Error (higher = lower error)"),
+                html.Li("Latency Score: Processing speed score (higher = faster)"),
+                html.Li("Robustness Score: Error resilience score (higher = fewer major errors)")
+            ])
         ])
     ])
 

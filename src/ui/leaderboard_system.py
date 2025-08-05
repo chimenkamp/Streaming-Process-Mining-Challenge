@@ -154,28 +154,38 @@ class SubmissionDatabase:
         except Exception as e:
             print(f"Error adding submission: {e}")
             return False
-    
-    def update_submission_status(self, submission_id: str, status: str, 
-                                evaluation_results: Optional[Dict] = None,
-                                leaderboard_scores: Optional[Dict] = None) -> bool:
+
+    def update_submission_status(self, submission_id: str, status: str,
+                                 evaluation_results: Optional[Dict] = None,
+                                 leaderboard_scores: Optional[Dict] = None) -> bool:
         """Update submission status and results."""
         try:
             with sqlite3.connect(self.db_path) as conn:
-                with sqlite3.connect(self.db_path) as conn:
-                    conn.execute("""
-                                 UPDATE submissions
-                                 SET status             = ?,
-                                     evaluation_results = ?,
-                                     leaderboard_scores = ?
-                                 WHERE submission_id = ?
-                                 """, (
-                                     status,
-                                     json.dumps(
-                                         make_json_serializable(evaluation_results)) if evaluation_results else None,
-                                     json.dumps(
-                                         make_json_serializable(leaderboard_scores)) if leaderboard_scores else None,
-                                     submission_id
-                                 ))
+                # FIXED: Removed duplicate connection
+                conn.execute("""
+                             UPDATE submissions
+                             SET status             = ?,
+                                 evaluation_results = ?,
+                                 leaderboard_scores = ?
+                             WHERE submission_id = ?
+                             """, (
+                                 status,
+                                 json.dumps(
+                                     make_json_serializable(evaluation_results)) if evaluation_results else None,
+                                 json.dumps(
+                                     make_json_serializable(leaderboard_scores)) if leaderboard_scores else None,
+                                 submission_id
+                             ))
+
+                # Verify the update worked
+                cursor = conn.execute("SELECT leaderboard_scores FROM submissions WHERE submission_id = ?",
+                                      (submission_id,))
+                result = cursor.fetchone()
+                if result and result[0]:
+                    print(f"Successfully updated submission {submission_id} with scores: {result[0]}")
+                else:
+                    print(f"Warning: No scores found for submission {submission_id} after update")
+
             return True
         except Exception as e:
             print(f"Error updating submission: {e}")
@@ -304,72 +314,88 @@ class EvaluationEngine:
         self.test_streams = ['simple_concept_drift', "gradual_concept_drift", "early_sudden_drift"]  # Add more as available
         self.test_cases = [100, 250, 500]  # Different case counts for robustness
         self.timeout_seconds = 300  # 5 minutes per test
-    
+
     def evaluate_submission(self, submission: SubmissionEntry) -> Tuple[bool, Dict[str, Any]]:
         """
         Evaluate a submission across multiple test scenarios.
-        
+
         Returns:
             Tuple of (success, results_dict)
         """
         try:
+            print(f"Starting evaluation for submission: {submission.submission_id}")
+
             # Load algorithm
             algorithm_files = self.upload_manager.find_algorithm_files(submission.file_path)
             if not algorithm_files:
                 return False, {"error": "No algorithm files found"}
-            
+
             algorithm_class = None
             for file_path in algorithm_files:
                 algorithm_class, error = self.algorithm_loader.load_algorithm_from_file(file_path)
                 if algorithm_class:
                     break
-            
+
             if not algorithm_class:
                 return False, {"error": "Could not load algorithm class"}
-            
+
+            print(f"Successfully loaded algorithm class: {algorithm_class.__name__}")
+
             # Run evaluations
             results = {}
             overall_scores = defaultdict(list)
-            
+
             for stream_id in self.test_streams:
+                print(f"Testing stream: {stream_id}")
                 stream_results = {}
-                
+
                 for num_cases in self.test_cases:
                     test_key = f"{stream_id}_{num_cases}"
-                    
+                    print(f"Testing with {num_cases} cases")
+
                     try:
                         evaluation_result = self._run_single_evaluation(
                             algorithm_class, stream_id, num_cases, submission.submission_id
                         )
-                        
+
                         if evaluation_result:
                             stream_results[test_key] = asdict(evaluation_result)
-                            
+
                             # Collect scores for overall ranking
                             overall_scores['mae'].append(evaluation_result.mae)
                             overall_scores['rmse'].append(evaluation_result.rmse)
                             overall_scores['accuracy'].append(evaluation_result.accuracy)
                             overall_scores['processing_time'].append(evaluation_result.avg_processing_time)
                             overall_scores['global_errors'].append(evaluation_result.global_errors)
-                        
+
+                            print(f"Evaluation result for {test_key}: MAE={evaluation_result.mae:.3f}, "
+                                  f"RMSE={evaluation_result.rmse:.3f}, Accuracy={evaluation_result.accuracy:.3f}")
+
                     except Exception as e:
+                        print(f"Error in evaluation {test_key}: {e}")
                         stream_results[test_key] = {"error": str(e)}
-                
+
                 results[stream_id] = stream_results
-            
+
+            print(f"Overall scores collected: {dict(overall_scores)}")
+
             # Calculate overall leaderboard scores
             leaderboard_scores = self._calculate_leaderboard_scores(overall_scores)
-            
+
+            print(f"Final leaderboard scores: {leaderboard_scores}")
+
             return True, {
                 "detailed_results": results,
                 "leaderboard_scores": leaderboard_scores,
                 "evaluation_summary": self._create_evaluation_summary(results)
             }
-            
+
         except Exception as e:
+            print(f"Evaluation failed with exception: {e}")
+            traceback.print_exc()
             return False, {"error": f"Evaluation failed: {str(e)}"}
-    
-    def _run_single_evaluation(self, algorithm_class, stream_id: str, 
+
+    def _run_single_evaluation(self, algorithm_class, stream_id: str,
                               num_cases: int, submission_id: str) -> Optional[EvaluationResult]:
         """Run evaluation for a single stream/case combination."""
         try:
@@ -435,44 +461,78 @@ class EvaluationEngine:
             traceback.print_exc()
 
             return None
-    
+
     def _calculate_leaderboard_scores(self, overall_scores: Dict[str, List[float]]) -> Dict[str, float]:
-        """Calculate normalized scores for leaderboard ranking."""
+        """
+        Calculate normalized scores for leaderboard ranking.
+        Formula: score = (0.3 × accuracy) + (0.25 × mae_norm) + (0.2 × rmse_norm) + (0.15 × latency_norm) + (0.1 × robustness)
+        """
         scores = {}
-        
-        if overall_scores['mae']:
-            scores['mae_score'] = 1.0 / (1.0 + np.mean(overall_scores['mae']))  # Lower is better
-        
-        if overall_scores['rmse']:
-            scores['rmse_score'] = 1.0 / (1.0 + np.mean(overall_scores['rmse']))  # Lower is better
-        
+
+        print(f"Calculating scores from: {overall_scores}")  # Debug output
+
+        # Normalize accuracy (already 0-1, higher is better)
         if overall_scores['accuracy']:
-            scores['accuracy_score'] = np.mean(overall_scores['accuracy'])  # Higher is better
-        
+            accuracy_avg = np.mean(overall_scores['accuracy'])
+            scores['accuracy_score'] = float(accuracy_avg)
+            print(f"Accuracy score: {scores['accuracy_score']}")
+        else:
+            scores['accuracy_score'] = 0.0
+
+        # Normalize MAE (lower is better, so invert and normalize)
+        if overall_scores['mae']:
+            mae_avg = np.mean(overall_scores['mae'])
+            # Convert to 0-1 scale where 1 is best (mae=0) and 0 is worst
+            # Using exponential decay: score = exp(-mae)
+            scores['mae_score'] = float(np.exp(-mae_avg))
+            print(f"MAE avg: {mae_avg}, MAE score: {scores['mae_score']}")
+        else:
+            scores['mae_score'] = 0.0
+
+        # Normalize RMSE (lower is better, so invert and normalize)
+        if overall_scores['rmse']:
+            rmse_avg = np.mean(overall_scores['rmse'])
+            # Convert to 0-1 scale where 1 is best (rmse=0) and 0 is worst
+            scores['rmse_score'] = float(np.exp(-rmse_avg))
+            print(f"RMSE avg: {rmse_avg}, RMSE score: {scores['rmse_score']}")
+        else:
+            scores['rmse_score'] = 0.0
+
+        # Normalize processing time/latency (lower is better)
         if overall_scores['processing_time']:
-            # Normalize processing time (lower is better, but cap at reasonable values)
-            avg_time = np.mean(overall_scores['processing_time'])
-            scores['speed_score'] = 1.0 / (1.0 + min(avg_time * 1000, 100))  # Convert to ms and cap
-        
+            latency_avg = np.mean(overall_scores['processing_time'])
+            # Convert to 0-1 scale, cap at reasonable values (e.g., 1 second = 0 score)
+            max_acceptable_time = 1.0  # 1 second
+            scores['latency_score'] = float(max(0.0, 1.0 - (latency_avg / max_acceptable_time)))
+            print(f"Latency avg: {latency_avg}, Latency score: {scores['latency_score']}")
+        else:
+            scores['latency_score'] = 0.0
+
+        # Normalize robustness (based on global errors, lower errors is better)
         if overall_scores['global_errors']:
-            scores['robustness_score'] = 1.0 / (1.0 + np.mean(overall_scores['global_errors']))
-        
-        # Calculate composite score (weighted average)
-        weights = {
-            'mae_score': 0.25,
-            'rmse_score': 0.20,
-            'accuracy_score': 0.30,
-            'speed_score': 0.15,
-            'robustness_score': 0.10
-        }
-        
-        composite_score = 0.0
-        for metric, weight in weights.items():
-            if metric in scores:
-                composite_score += scores[metric] * weight
-        
-        scores['composite_score'] = composite_score
-        
+            errors_avg = np.mean(overall_scores['global_errors'])
+            # Convert to 0-1 scale where 0 errors = 1.0 score
+            max_acceptable_errors = 10  # Assume 10+ errors = 0 score
+            scores['robustness_score'] = float(max(0.0, 1.0 - (errors_avg / max_acceptable_errors)))
+            print(f"Global errors avg: {errors_avg}, Robustness score: {scores['robustness_score']}")
+        else:
+            scores['robustness_score'] = 1.0  # No errors = perfect score
+
+        # Calculate composite score using your specified weights
+        # score = (0.3 × accuracy) + (0.25 × MAE) + (0.2 × RMSE) + (0.15 × latency) + (0.1 × robustness)
+        composite_score = (
+                0.30 * scores['accuracy_score'] +
+                0.25 * scores['mae_score'] +
+                0.20 * scores['rmse_score'] +
+                0.15 * scores['latency_score'] +
+                0.10 * scores['robustness_score']
+        )
+
+        scores['composite_score'] = float(composite_score)
+
+        print(f"Final composite score: {scores['composite_score']}")
+        print(f"All scores: {scores}")
+
         return scores
     
     def _create_evaluation_summary(self, results: Dict[str, Any]) -> Dict[str, Any]:
@@ -503,51 +563,66 @@ class LeaderboardManager:
     def __init__(self, database: SubmissionDatabase):
         """Initialize leaderboard manager."""
         self.database = database
-    
+
     def get_leaderboard(self, limit: Optional[int] = 50) -> List[Dict[str, Any]]:
         """
-        Generate current leaderboard.
-        
+        Generate current leaderboard with improved debugging.
+
         Returns:
             List of leaderboard entries sorted by composite score
         """
         submissions = self.database.get_submissions()
-        
+        print(f"Total submissions found: {len(submissions)}")
+
         # Filter completed submissions with scores
         valid_submissions = [
-            s for s in submissions 
+            s for s in submissions
             if s.status == 'completed' and s.leaderboard_scores
         ]
-        
+
+        print(f"Valid submissions with scores: {len(valid_submissions)}")
+
+        # Debug: Print details of each valid submission
+        for s in valid_submissions:
+            print(f"Submission {s.submission_id}: status={s.status}, "
+                  f"scores={s.leaderboard_scores}")
+
         # Create leaderboard entries
         leaderboard_entries = []
         for submission in valid_submissions:
+            composite_score = submission.leaderboard_scores.get('composite_score', 0.0)
+            print(f"Creating entry for {submission.team_name}: composite_score={composite_score}")
+
             entry = {
                 'rank': 0,  # Will be set after sorting
                 'team_name': submission.team_name,
                 'algorithm_name': submission.algorithm_name,
                 'submission_time': submission.submission_time,
-                'composite_score': submission.leaderboard_scores.get('composite_score', 0.0),
+                'composite_score': composite_score,
                 'accuracy_score': submission.leaderboard_scores.get('accuracy_score', 0.0),
                 'mae_score': submission.leaderboard_scores.get('mae_score', 0.0),
                 'rmse_score': submission.leaderboard_scores.get('rmse_score', 0.0),
-                'speed_score': submission.leaderboard_scores.get('speed_score', 0.0),
+                'latency_score': submission.leaderboard_scores.get('latency_score', 0.0),  # Fixed naming
                 'robustness_score': submission.leaderboard_scores.get('robustness_score', 0.0),
                 'submission_id': submission.submission_id
             }
             leaderboard_entries.append(entry)
-        
+
         # Sort by composite score (descending)
         leaderboard_entries.sort(key=lambda x: x['composite_score'], reverse=True)
-        
+
+        print(f"Sorted leaderboard entries: {len(leaderboard_entries)}")
+        for i, entry in enumerate(leaderboard_entries[:5]):  # Print top 5
+            print(f"Rank {i + 1}: {entry['team_name']} - Score: {entry['composite_score']:.3f}")
+
         # Assign ranks
         for i, entry in enumerate(leaderboard_entries):
             entry['rank'] = i + 1
-        
+
         # Apply limit
         if limit:
             leaderboard_entries = leaderboard_entries[:limit]
-        
+
         return leaderboard_entries
     
     def get_team_submissions(self, team_name: str) -> List[Dict[str, Any]]:
@@ -652,36 +727,56 @@ class SubmissionManager:
             return submission_id
         else:
             raise Exception("Failed to save submission to database")
-    
+
     def evaluate_submission_async(self, submission_id: str) -> bool:
         """
         Start asynchronous evaluation of a submission.
-        
+
         In a real implementation, this would queue the evaluation
         for processing by a background worker.
         """
         if not self.evaluation_engine:
+            print("Evaluation engine not available")
             return False
-        
+
         submission = self.database.get_submission(submission_id)
         if not submission:
+            print(f"Submission not found: {submission_id}")
             return False
-        
+
+        print(f"Starting evaluation for submission: {submission_id}")
+
         # Update status to evaluating
         self.database.update_submission_status(submission_id, 'evaluating')
-        
+
         try:
             # Run evaluation (in production, this would be async)
             success, results = self.evaluation_engine.evaluate_submission(submission)
-            
+
+            print(f"Evaluation completed. Success: {success}")
+
             if success:
                 # Save evaluation results
                 leaderboard_scores = results.get('leaderboard_scores', {})
-                self.database.update_submission_status(
+                print(f"Saving leaderboard scores: {leaderboard_scores}")
+
+                update_success = self.database.update_submission_status(
                     submission_id, 'completed', results, leaderboard_scores
                 )
-                
-                # Save detailed evaluations
+
+                if not update_success:
+                    print(f"Failed to update submission status for {submission_id}")
+                    return False
+
+                # Verify the scores were saved
+                updated_submission = self.database.get_submission(submission_id)
+                if updated_submission and updated_submission.leaderboard_scores:
+                    print(f"Verification: Scores saved successfully for {submission_id}")
+                    print(f"Saved scores: {updated_submission.leaderboard_scores}")
+                else:
+                    print(f"Warning: Scores not found after saving for {submission_id}")
+
+                # Save detailed evaluations to separate table
                 detailed_results = results.get('detailed_results', {})
                 for stream_id, stream_results in detailed_results.items():
                     for test_key, test_result in stream_results.items():
@@ -698,18 +793,22 @@ class SubmissionManager:
                                 total_runtime=test_result['total_runtime'],
                                 conformance_scores=test_result['conformance_scores'],
                                 baseline_scores=test_result['baseline_scores'],
-                                timestamp=datetime.fromisoformat(test_result['timestamp'])
+                                timestamp=datetime.fromisoformat(str(test_result['timestamp']))
                             )
                             self.database.add_evaluation(evaluation)
-                
+
                 return True
             else:
                 # Evaluation failed
+                error_msg = results.get('error', 'Unknown evaluation error')
+                print(f"Evaluation failed: {error_msg}")
                 self.database.update_submission_status(submission_id, 'failed', results)
                 return False
-                
+
         except Exception as e:
             # Evaluation error
+            print(f"Exception during evaluation: {e}")
+            traceback.print_exc()
             error_results = {"error": str(e)}
             self.database.update_submission_status(submission_id, 'failed', error_results)
             return False
