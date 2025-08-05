@@ -626,18 +626,31 @@ app.clientside_callback(
     [Input('user-token-store', 'children')],
     prevent_initial_call=True
 )
-def ensure_user_exists_with_defaults(token):
-    """Ensure user exists and has default algorithms seeded."""
+def ensure_user_exists_with_defaults(token: str):
+    """
+    Ensure user exists and has default algorithms seeded, but only triggers
+    a refresh if the user is new.
+    """
     if not token:
+        # If there's no token, do nothing.
         return dash.no_update
 
     try:
-        # This will create user if not exists and seed default algorithms
+        # Check if the user already has algorithms. If they do, the default
+        # algorithms have already been created, and no action is needed.
+        if user_db.get_user_algorithms(token):
+            # By returning no_update, we stop the callback chain here.
+            return dash.no_update
+
+        # If no algorithms are found, this is a new user.
+        # Proceed to create the user and their default algorithms.
         user_db.create_or_update_user(token, email=f"user_{token[:8]}@platform.local")
 
-        # Return timestamp to trigger refresh
+        # Return a new timestamp. This will trigger a one-time refresh
+        # to load the newly created default algorithms into the UI.
         import time
         return str(int(time.time()))
+
     except Exception as e:
         logger.error(f"Error ensuring user exists: {e}")
         return dash.no_update
@@ -1354,25 +1367,32 @@ def update_submit_button_state(active_tab, token, refresh_trigger):
         return True, "🏆 Submit Best Algorithm to Challenge"
 
 
-# Enhanced navigation callbacks
+# Enhanced navigation callbacks - FIXED to remove non-existent button
 @app.callback(
     Output('main-tabs', 'active_tab'),
-    [Input('goto-upload-btn', 'n_clicks'),
-     Input('goto-upload-from-myalgs-btn', 'n_clicks'),
+    [Input('goto-upload-from-myalgs-btn', 'n_clicks'),
      Input({'type': 'test-algorithm-btn', 'index': ALL}, 'n_clicks')],
     prevent_initial_call=True
 )
-def handle_navigation(upload_clicks, upload_from_myalgs_clicks, test_clicks):
+def handle_navigation(upload_from_myalgs_clicks: Optional[int], test_clicks: list[Optional[int]]) -> str:
+    """
+    Handles navigation between tabs based on button clicks.
+
+    This callback correctly differentiates between a button being rendered
+    and a button being clicked by checking the value of n_clicks.
+    """
     ctx = callback_context
-    if not ctx.triggered:
+    if not ctx.triggered_id:
         return dash.no_update
 
-    trigger_id = ctx.triggered[0]['prop_id']
-
-    if 'goto-upload-btn' in trigger_id or 'goto-upload-from-myalgs-btn' in trigger_id:
+    if ctx.triggered_id == 'goto-upload-from-myalgs-btn' and upload_from_myalgs_clicks:
         return "upload"
-    elif 'test-algorithm-btn' in trigger_id:
-        return "test"
+
+    if any(test_clicks):
+        triggered_info = ctx.triggered[0]
+
+        if 'test-algorithm-btn' in triggered_info['prop_id']:
+            return "test"
 
     return dash.no_update
 
