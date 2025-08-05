@@ -1,34 +1,12 @@
 # Streaming Process Mining Challenge Platform
 
-## 🚀 Enhanced Platform Features
+Streaming process mining deals with the real-time analysis of streaming data. Event streams require algorithms capable of processing data incrementally. To systematically address these challenges,
+we propose the Adaptive Validation of Online Challenge Algorithms for Dynamic Outcomes (AVOCADO 🥑), providing standardized evaluation criteria for streaming algorithms. The AVOCADO 🥑 evaluates algorithms on streaming-specific metrics like accuracy, MAE, RMSE, Processing Latency, and robustness. This initiative seeks to foster innovation and community-driven discussions to advance the field of streaming process
+mining.
 
-The platform has been upgraded from a simple testing interface to a comprehensive challenge management system:
+[//]: # (Add a image of the platform here)
 
-### ✨ New Features
-
-1. **Professional File Upload System**
-   - Upload Python files (.py) or ZIP archives (.zip)
-   - Automatic algorithm detection and validation
-   - Library dependency specification
-   - Session-based file management
-
-2. **Comprehensive Leaderboard**
-   - Real-time ranking based on multiple metrics
-   - Performance distribution visualization
-   - Team submission history
-   - Detailed evaluation results
-
-3. **Advanced Submission Management**
-   - Background evaluation processing
-   - Persistent submission database
-   - Status tracking and notifications
-   - Comprehensive error handling
-
-4. **Enhanced User Interface**
-   - Tabbed navigation (Test & Submit, Leaderboard, My Submissions, Documentation)
-   - Nord-themed professional styling
-   - Interactive timeline scrubber
-   - Fullscreen result visualization
+[![Streaming Process Mining Challenge Platform](docs/evaluating_drifts.png)](docs/evaluating_drifts.png)
 
 ## 📦 Installation & Setup
 
@@ -45,42 +23,27 @@ pip install -r requirements.txt
 ### Create `requirements.txt`
 
 ```txt
-dash>=2.14.0
-dash-bootstrap-components>=1.5.0
-plotly>=5.15.0
-pandas>=2.0.0
-numpy>=1.24.0
-sqlalchemy>=2.0.0
-pm4py>=2.7.0  # Optional: for PNML file support
-scikit-learn>=1.3.0  # Optional: for advanced algorithms
-```
+# Core Dash dependencies
+dash==2.14.1
+dash-bootstrap-components==1.5.0
+plotly==5.17.0
 
-### Directory Structure
+numpy==2.3.1
+pandas==2.3.0
 
-```
-streaming-process-mining-challenge/
-├── app.py                          # Main enhanced application
-├── requirements.txt                # Python dependencies
-├── assets/
-│   ├── config/
-│   │   └── stream_configuration.json
-│   └── data/
-│       ├── model_one.pnml         # Optional PNML files
-│       └── model_two.pnml
-├── src/
-│   ├── functions.py               # Utility functions
-│   └── ui/
-│       ├── algorithm_base.py      # Base algorithm class
-│       ├── styles.py             # Nord theme styles
-│       ├── stream_manager.py     # Stream generation
-│       └── test_streams.py       # Concept drift streams
-├── leaderboard_system.py         # Submission & evaluation management
-├── leaderboard_ui.py             # Leaderboard UI components
-├── file_upload_utils.py          # File upload utilities
-├── example_algorithm.py          # Example algorithm implementation
-├── uploaded_algorithms/           # Directory for uploaded files
-├── challenge_submissions.db       # SQLite database (auto-created)
-└── README.md                     # This file
+pm4py==2.7.11
+
+python-dateutil==2.8.2
+
+jupyter==1.0.0
+ipython==8.15.0
+
+gunicorn==23.0.0
+waitress==2.1.2
+
+# Optional: For testing
+pytest==7.4.2
+
 ```
 
 ### Quick Start
@@ -369,7 +332,7 @@ Create `Dockerfile`:
 FROM python:3.9-slim
 
 WORKDIR /app
-COPY ../requirements.txt .
+COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 COPY .. .
